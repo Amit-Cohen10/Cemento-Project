@@ -4,12 +4,15 @@ import { useVirtualRows } from "../../hooks/useVirtualRows.js";
 import { getVisibleColumns, sortColumns } from "../../utils/columnUtils.js";
 import { exportRowsAsJson } from "../../utils/exportUtils.js";
 import {
+  ANY_COLUMN,
   DEFAULT_FILTER_OPERATOR,
   FILTER_OPERATORS,
+  applyFilters,
   filterRows,
 } from "../../utils/filterUtils.js";
 import { cycleSortDirection, sortRows } from "../../utils/sortUtils.js";
 import { ColumnPicker } from "./ColumnPicker.jsx";
+import { FilterPanel } from "./FilterPanel.jsx";
 import { TableHeader } from "./TableHeader.jsx";
 import { TableRow } from "./TableRow.jsx";
 
@@ -58,6 +61,32 @@ export function DataTable({ columns, initialData, rowHeight = DEFAULT_ROW_HEIGHT
   const [searchQuery, setSearchQuery] = useState("");
   const [filterOperator, setFilterOperator] = useState(DEFAULT_FILTER_OPERATOR);
   const [sortState, setSortState] = useState(null);
+  // Per-column filters: each entry is { id, columnId, operator, value }.
+  // I keep an id on each filter so React keys stay stable even when the
+  // user reorders or deletes rows.
+  const [filters, setFilters] = useState([]);
+
+  const handleAddFilter = useCallback(() => {
+    const newId = `filter-${Date.now()}-${Math.floor(Math.random() * 1e4)}`;
+    setFilters((current) => [
+      ...current,
+      { id: newId, columnId: ANY_COLUMN, operator: "contains", value: "" },
+    ]);
+  }, []);
+
+  const handleUpdateFilter = useCallback((id, patch) => {
+    setFilters((current) =>
+      current.map((filter) => (filter.id === id ? { ...filter, ...patch } : filter)),
+    );
+  }, []);
+
+  const handleRemoveFilter = useCallback((id) => {
+    setFilters((current) => current.filter((filter) => filter.id !== id));
+  }, []);
+
+  const handleClearFilters = useCallback(() => {
+    setFilters([]);
+  }, []);
 
   const visibleColumns = useMemo(
     () => getVisibleColumns(sortedColumns, visibleColumnIds),
@@ -84,12 +113,17 @@ export function DataTable({ columns, initialData, rowHeight = DEFAULT_ROW_HEIGHT
     setFilterOperator(event.target.value);
   };
 
-  // Apply filter first (works on the smaller saved value, fast for 2.5k rows)
-  // then sort the result. Doing it in this order means the visible row count
-  // shown in the toolbar matches what's on screen.
+  // Pipeline: per-column filters -> quick (global) filter -> sort.
+  // Per-column filters can target hidden columns, so I pass the full
+  // sortedColumns. The quick filter only looks at visible columns.
+  const perColumnFiltered = useMemo(
+    () => applyFilters(rows, filters, sortedColumns),
+    [rows, filters, sortedColumns],
+  );
+
   const filteredRows = useMemo(
-    () => filterRows(rows, searchQuery, visibleColumns, filterOperator),
-    [rows, searchQuery, visibleColumns, filterOperator],
+    () => filterRows(perColumnFiltered, searchQuery, visibleColumns, filterOperator),
+    [perColumnFiltered, searchQuery, visibleColumns, filterOperator],
   );
 
   const sortedRows = useMemo(() => {
@@ -224,6 +258,15 @@ export function DataTable({ columns, initialData, rowHeight = DEFAULT_ROW_HEIGHT
           </button>
         </div>
       </div>
+
+      <FilterPanel
+        columns={sortedColumns}
+        filters={filters}
+        onAddFilter={handleAddFilter}
+        onUpdateFilter={handleUpdateFilter}
+        onRemoveFilter={handleRemoveFilter}
+        onClearFilters={handleClearFilters}
+      />
 
       <div className="tableStatus" role="status">
         {hasUnsavedChanges
