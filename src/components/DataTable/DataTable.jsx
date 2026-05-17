@@ -468,7 +468,8 @@ export function DataTable({
       </div>
 
       <SelectionSummary
-        rows={rows}
+        rows={sortedRows}
+        totalRowCount={rows.length}
         visibleColumns={visibleColumns}
         selectedRowIds={selectedRowIds}
       />

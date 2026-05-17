@@ -3,53 +3,84 @@ import { aggregateColumn } from "../../utils/aggregationUtils.js";
 import { formatCellValue } from "../../utils/cellValueUtils.js";
 
 /*
- * Excel-style footer bar that summarises the selected rows.
- * Hidden when nothing is selected, so it doesn't take up space.
+ * Excel-style footer bar that summarises the table.
  *
- * For every visible NUMERIC column, I show count / sum / avg / min / max
- * computed from the selected rows. I reuse `formatCellValue` so that, say,
- * a currency column formats its sum the same way the cells themselves do.
+ * Two modes, picked automatically:
+ *   - Selection mode: at least one checkbox is ticked. The bar
+ *     summarises the SELECTED rows and shows "N selected".
+ *   - Overview mode (default): nothing is selected. The bar summarises
+ *     EVERY row currently visible -- i.e. what's left after filters and
+ *     sort. The label is "X of Y rows" when a filter is active, just
+ *     "X rows" otherwise.
+ *
+ * Both modes show count / sum / avg / min / max for every visible numeric
+ * column. Reusing formatCellValue means a currency column gets its
+ * sum/avg formatted the same way the cells themselves render ("120,000$").
+ *
+ * The bar hides itself only when there's literally nothing to show
+ * (filter returned zero rows AND nothing is selected) -- otherwise
+ * keeping it visible gives the user value the moment they filter.
  */
 export const SelectionSummary = memo(function SelectionSummary({
   rows,
+  totalRowCount,
   visibleColumns,
   selectedRowIds,
 }) {
-  // Pre-filter to selected rows once. This is the only loop that scales
-  // with rows.length; the rest of the work is per visible numeric column.
-  const selectedRows = useMemo(() => {
-    if (selectedRowIds.size === 0) return [];
-    return rows.filter((row) => selectedRowIds.has(row.id));
-  }, [rows, selectedRowIds]);
+  const isSelectionMode = selectedRowIds.size > 0;
 
-  // Compute stats per numeric column. Non-numeric columns are skipped.
+  // Choose which rows the stats run on.
+  // Selection wins because it's the more specific intent.
+  const targetRows = useMemo(() => {
+    if (isSelectionMode) {
+      return rows.filter((row) => selectedRowIds.has(row.id));
+    }
+    return rows;
+  }, [rows, selectedRowIds, isSelectionMode]);
+
+  // Stats per visible NUMERIC column. Non-numeric columns are skipped.
   const columnStats = useMemo(() => {
-    if (selectedRows.length === 0) return [];
+    if (targetRows.length === 0) return [];
     return visibleColumns
       .filter((column) => column.type === "number")
       .map((column) => ({
         column,
-        stats: aggregateColumn(selectedRows, column.id),
+        stats: aggregateColumn(targetRows, column.id),
       }))
       .filter((entry) => entry.stats !== null);
-  }, [selectedRows, visibleColumns]);
+  }, [targetRows, visibleColumns]);
 
-  if (selectedRowIds.size === 0) {
+  if (targetRows.length === 0) {
     return null;
   }
+
+  const isFiltered = !isSelectionMode && rows.length !== totalRowCount;
 
   return (
     <div className="selectionSummary" role="status" aria-live="polite">
       <div className="selectionSummaryCount">
         <span className="selectionSummaryDot" aria-hidden="true" />
         <span>
-          <strong>{selectedRowIds.size.toLocaleString()}</strong> selected
+          {isSelectionMode ? (
+            <>
+              <strong>{selectedRowIds.size.toLocaleString()}</strong> selected
+            </>
+          ) : isFiltered ? (
+            <>
+              <strong>{rows.length.toLocaleString()}</strong> of{" "}
+              {totalRowCount.toLocaleString()} rows
+            </>
+          ) : (
+            <>
+              <strong>{rows.length.toLocaleString()}</strong> rows
+            </>
+          )}
         </span>
       </div>
 
       {columnStats.length === 0 ? (
         <span className="selectionSummaryEmpty">
-          Select a row in a numeric column to see sums and averages.
+          No numeric columns are visible.
         </span>
       ) : (
         <ul className="selectionSummaryList">
