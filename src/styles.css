@@ -92,6 +92,13 @@ button {
   box-shadow: 0 8px 24px rgba(26, 26, 26, 0.06);
 }
 
+.brandLogo {
+  display: block;
+  height: 56px;
+  width: auto;
+  user-select: none;
+}
+
 .brandText {
   flex: 1;
   min-width: 200px;

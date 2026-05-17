@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import { CementoLogo } from "./components/CementoLogo.jsx";
 import { DataTable } from "./components/DataTable/DataTable.jsx";
 import { employeeColumns, createEmployeeRows } from "./data/mockTableData.js";
 
@@ -12,10 +11,15 @@ function App() {
   return (
     <main className="appShell">
       {/* Logo lives in its own white card so it stays readable on the
-          off-white page background. */}
+          off-white page background. The file sits in /public so Vite
+          serves it from the root URL. */}
       <div className="brandBar">
         <div className="logoCard">
-          <CementoLogo />
+          <img
+            src="/cemento-logo.png"
+            alt="Cemento Technologies"
+            className="brandLogo"
+          />
         </div>
         <div className="brandText">
           <p className="eyebrow">Client Side Assignment</p>
