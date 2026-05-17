@@ -1,62 +1,22 @@
 /*
- * Filtering helpers for the table.
+ * Per-column filtering for the table.
  *
- * There are two filter mechanisms:
+ * Each filter is an object: { id, columnId, operator, value }.
+ * Filters combine with AND. columnId === ANY_COLUMN ("*") means "compare
+ * against every column" -- useful for global text search.
  *
- *   1) filterRows(...)
- *      The toolbar's "quick filter": one operator + one value compared
- *      against every visible cell. Good for finding text anywhere in the
- *      table.
- *
- *   2) applyFilters(...)
- *      The per-column filter panel: a list of filters, each picking a
- *      column, an operator that makes sense for that column's type, and a
- *      value. Filters combine with AND. Good for queries like
- *      "team equals Backend AND salary greater than 100000".
- *
- * Both can be active at once, in which case both must match (AND).
+ * The operators a filter can use depend on the column's type. The
+ * FilterPanel reads operatorsForType() to know which options to show in
+ * the dropdown, and compareCell() reads the same map (indirectly) to know
+ * how to compare values.
  */
-
-// -----------------------------------------------------------------------
-// Quick filter (toolbar search input + operator dropdown)
-// -----------------------------------------------------------------------
-
-export const FILTER_OPERATORS = [
-  { value: "contains", label: "Contains" },
-  { value: "equals", label: "Equals" },
-  { value: "startsWith", label: "Starts with" },
-  { value: "endsWith", label: "Ends with" },
-];
-
-export const DEFAULT_FILTER_OPERATOR = "contains";
-
-export function filterRows(rows, query, columns, operator = DEFAULT_FILTER_OPERATOR) {
-  const trimmed = (query ?? "").trim().toLowerCase();
-  if (!trimmed) {
-    return rows;
-  }
-
-  const matches = textMatcherFor(operator);
-
-  return rows.filter((row) =>
-    columns.some((column) => {
-      const cellText = String(row[column.id] ?? "").toLowerCase();
-      return matches(cellText, trimmed);
-    }),
-  );
-}
-
-// -----------------------------------------------------------------------
-// Per-column filter panel
-// -----------------------------------------------------------------------
 
 // Sentinel used by the FilterPanel "Any column" option. Reused here so the
 // panel and the matcher agree on the magic value.
 export const ANY_COLUMN = "*";
 
 // Operators available for each column type. The panel reads this map to
-// decide which operators to show in the dropdown, and applyFilters reads
-// it (indirectly through compareCell) to know how to compare.
+// decide which operators to show in the dropdown.
 const OPERATORS_BY_TYPE = {
   string: ["contains", "equals", "startsWith", "endsWith"],
   select: ["equals", "contains"],
@@ -82,9 +42,9 @@ export function operatorsForType(type) {
   return OPERATORS_BY_TYPE[type] ?? OPERATORS_BY_TYPE.string;
 }
 
-// Apply every per-column filter to the rows. Returns the same array
-// instance when there are no filters, so React.memo on downstream
-// components doesn't see a fake change.
+// Apply every filter to the rows. Returns the same array instance when
+// there are no active filters, so React.memo on downstream components
+// doesn't see a fake change.
 export function applyFilters(rows, filters, columns) {
   if (!filters || filters.length === 0) {
     return rows;
@@ -106,20 +66,18 @@ export function applyFilters(rows, filters, columns) {
 
 function isFilterActive(filter) {
   if (!filter) return false;
-  // Boolean operator always has a value (true/false) so it's always active.
-  const column = filter.columnId;
+  if (!filter.columnId || !filter.operator) return false;
   const value = filter.value;
-  // An unset string value means "no input yet" -> don't filter on it.
+  // An unset value means "no input yet" -> don't filter on it.
   if (value === "" || value === null || value === undefined) {
     return false;
   }
-  return Boolean(column) && Boolean(filter.operator);
+  return true;
 }
 
 function matchFilter(row, filter, columnById, allColumns) {
   if (filter.columnId === ANY_COLUMN) {
-    // "Any column": same semantics as the quick filter -- check every
-    // column with the same operator.
+    // "Any column": check every column with the same operator.
     return allColumns.some((column) =>
       compareCell(row[column.id], filter.operator, filter.value, column.type),
     );
@@ -134,10 +92,9 @@ function matchFilter(row, filter, columnById, allColumns) {
   return compareCell(row[filter.columnId], filter.operator, filter.value, column.type);
 }
 
-// One cell vs one query value. The function is operator-first because
-// text operators (contains / startsWith / endsWith) work on any type by
-// stringifying the cell, while equality and comparison operators need to
-// understand the column type.
+// One cell vs one query value. Operator-first so text operators
+// (contains/startsWith/endsWith) can work on every type by stringifying
+// the cell, while equality and comparison operators stay type-aware.
 function compareCell(cellValue, operator, queryValue, type) {
   // Text operators on any type.
   if (operator === "contains" || operator === "startsWith" || operator === "endsWith") {
@@ -201,9 +158,6 @@ function compareCell(cellValue, operator, queryValue, type) {
 }
 
 function textMatcherFor(operator) {
-  if (operator === "equals") {
-    return (cell, query) => cell === query;
-  }
   if (operator === "startsWith") {
     return (cell, query) => cell.startsWith(query);
   }

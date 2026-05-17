@@ -40,12 +40,11 @@ Everything the project needs is listed in `package.json`, so a fresh
 - **Click-to-sort** on any column header. Cycle: unsorted → ascending →
   descending → unsorted. Numbers, booleans, dates and strings each use a
   sensible comparator.
-- **Quick filter** (top toolbar): one operator (contains / equals /
-  startsWith / endsWith) + one value compared against every visible cell.
-- **Per-column filter panel**: add multiple filters, each picking a
-  column, an operator that fits the column's type (numbers get
-  greater/less than, dates get before/after, booleans get yes/no, etc.)
-  and a value. Filters combine with AND.
+- **Per-column filter panel**: add as many filters as you want. Each filter
+  picks a column, an operator that fits the column's type (numbers get
+  greater/less than, dates get before/after, booleans get yes/no, strings
+  get contains/equals/starts-with/ends-with) and a value. Filters combine
+  with AND. There's also an "Any column" option for global text matching.
 - **Add row / Delete row**: "+ Add row" button creates an empty row at the
   top; a small `×` on every row deletes it (with confirmation by way of the
   delete-then-save-flow).

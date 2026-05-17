@@ -3,13 +3,7 @@ import { useEditableTable } from "../../hooks/useEditableTable.js";
 import { useVirtualRows } from "../../hooks/useVirtualRows.js";
 import { getVisibleColumns, sortColumns } from "../../utils/columnUtils.js";
 import { exportRowsAsJson } from "../../utils/exportUtils.js";
-import {
-  ANY_COLUMN,
-  DEFAULT_FILTER_OPERATOR,
-  FILTER_OPERATORS,
-  applyFilters,
-  filterRows,
-} from "../../utils/filterUtils.js";
+import { ANY_COLUMN, applyFilters } from "../../utils/filterUtils.js";
 import { cycleSortDirection, sortRows } from "../../utils/sortUtils.js";
 import { ColumnPicker } from "./ColumnPicker.jsx";
 import { FilterPanel } from "./FilterPanel.jsx";
@@ -26,7 +20,7 @@ const DELETE_COLUMN_WIDTH = 56;
  * so we can drop it into any page that follows the same schema.
  *
  * Render pipeline for the body:
- *   rows -> filter (search) -> sort (header click) -> virtualize -> <tr>s
+ *   rows -> applyFilters (panel) -> sort (header click) -> virtualize -> <tr>s
  */
 export function DataTable({ columns, initialData, rowHeight = DEFAULT_ROW_HEIGHT }) {
   const scrollRef = useRef(null);
@@ -58,8 +52,6 @@ export function DataTable({ columns, initialData, rowHeight = DEFAULT_ROW_HEIGHT
     deleteRow,
   } = useEditableTable(initialData, initialColumnIds);
 
-  const [searchQuery, setSearchQuery] = useState("");
-  const [filterOperator, setFilterOperator] = useState(DEFAULT_FILTER_OPERATOR);
   const [sortState, setSortState] = useState(null);
   // Per-column filters: each entry is { id, columnId, operator, value }.
   // I keep an id on each filter so React keys stay stable even when the
@@ -105,25 +97,11 @@ export function DataTable({ columns, initialData, rowHeight = DEFAULT_ROW_HEIGHT
     setSortState((current) => cycleSortDirection(current, columnId));
   }, []);
 
-  const handleSearchChange = (event) => {
-    setSearchQuery(event.target.value);
-  };
-
-  const handleOperatorChange = (event) => {
-    setFilterOperator(event.target.value);
-  };
-
-  // Pipeline: per-column filters -> quick (global) filter -> sort.
-  // Per-column filters can target hidden columns, so I pass the full
-  // sortedColumns. The quick filter only looks at visible columns.
-  const perColumnFiltered = useMemo(
+  // Pipeline: per-column filters -> sort -> virtualize.
+  // Filters can target hidden columns, so we pass the full sortedColumns.
+  const filteredRows = useMemo(
     () => applyFilters(rows, filters, sortedColumns),
     [rows, filters, sortedColumns],
-  );
-
-  const filteredRows = useMemo(
-    () => filterRows(perColumnFiltered, searchQuery, visibleColumns, filterOperator),
-    [perColumnFiltered, searchQuery, visibleColumns, filterOperator],
   );
 
   const sortedRows = useMemo(() => {
@@ -183,31 +161,6 @@ export function DataTable({ columns, initialData, rowHeight = DEFAULT_ROW_HEIGHT
             visibleColumnIds={visibleColumnIds}
             onToggleColumn={toggleColumnVisibility}
           />
-
-          <div className="searchField">
-            <span className="searchLabel">Filter</span>
-            <div className="searchControls">
-              <select
-                className="filterOperator"
-                value={filterOperator}
-                onChange={handleOperatorChange}
-                aria-label="Filter operator"
-              >
-                {FILTER_OPERATORS.map((op) => (
-                  <option key={op.value} value={op.value}>
-                    {op.label}
-                  </option>
-                ))}
-              </select>
-              <input
-                type="search"
-                className="searchInput"
-                placeholder="Type a value..."
-                value={searchQuery}
-                onChange={handleSearchChange}
-              />
-            </div>
-          </div>
         </div>
 
         <div className="tableActions">
@@ -320,7 +273,7 @@ export function DataTable({ columns, initialData, rowHeight = DEFAULT_ROW_HEIGHT
             {sortedRows.length === 0 && (
               <tr className="emptyRow">
                 <td colSpan={totalColumnsForSpacer} className="emptyCell">
-                  No rows match your search.
+                  No rows match your filters.
                 </td>
               </tr>
             )}

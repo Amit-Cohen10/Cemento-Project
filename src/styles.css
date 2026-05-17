@@ -100,66 +100,6 @@ h1 {
   flex-wrap: wrap;
 }
 
-.searchField {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  min-width: 320px;
-}
-
-.searchLabel {
-  color: #475569;
-  font-size: 0.82rem;
-  font-weight: 800;
-}
-
-/* Operator dropdown sits flush against the search input so they look like
-   one combined control with a divider in the middle. */
-.searchControls {
-  display: flex;
-  align-items: stretch;
-}
-
-.filterOperator {
-  height: 34px;
-  padding: 0 10px;
-  border: 1px solid #d8dee8;
-  border-right: 0;
-  border-top-left-radius: 8px;
-  border-bottom-left-radius: 8px;
-  background: #f8fafc;
-  color: #1f2937;
-  font-weight: 700;
-  cursor: pointer;
-  outline: none;
-}
-
-.filterOperator:focus {
-  border-color: #0f766e;
-  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.18);
-  position: relative;
-  z-index: 1;
-}
-
-.searchInput {
-  flex: 1;
-  min-width: 0;
-  height: 34px;
-  padding: 0 10px;
-  border: 1px solid #d8dee8;
-  border-top-right-radius: 8px;
-  border-bottom-right-radius: 8px;
-  background: #ffffff;
-  color: #1f2937;
-  outline: none;
-}
-
-.searchInput:focus {
-  border-color: #0f766e;
-  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.18);
-  position: relative;
-  z-index: 1;
-}
 
 .columnPicker {
   min-width: 260px;
