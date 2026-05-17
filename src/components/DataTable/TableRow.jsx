@@ -1,6 +1,11 @@
 import { memo } from "react";
 import { EditableCell } from "./EditableCell.jsx";
 
+/*
+ * One row of the table.
+ * Wrapped in React.memo so rows that didn't change skip re-rendering when
+ * the user edits a cell somewhere else.
+ */
 export const TableRow = memo(function TableRow({
   row,
   rowIndex,

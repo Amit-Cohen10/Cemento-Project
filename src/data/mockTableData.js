@@ -1,6 +1,14 @@
-/**
- * Mock data for the assignment.
- * No faker dependency is used so the project stays easy to run and understand.
+/*
+ * Demo data for the assignment.
+ * I generate it deterministically (no faker, no Math.random) so the table
+ * always looks the same on every refresh, which is much easier to demo
+ * during an interview and easier to debug.
+ *
+ * The column set covers all four required types:
+ *   - string  (name, location, team)
+ *   - number  (salary, ticketsClosed)
+ *   - boolean (active)
+ *   - select  (role, level)
  */
 
 export const employeeColumns = [
@@ -96,12 +104,14 @@ const teams = ["Platform", "Growth", "Core Product", "Operations", "Infrastructu
 const roles = ["Frontend", "Backend", "Full Stack", "QA", "Product"];
 const levels = ["Junior", "Mid", "Senior", "Lead"];
 
+// Pick a value by index. The step lets me get a different cycle per column
+// so two columns don't end up perfectly correlated.
 function pickValue(values, index, step = 1) {
   return values[(index * step) % values.length];
 }
 
-// Creates a predictable large data set.
-// Predictable data is useful in interviews because it is easy to explain and debug.
+// Build a large but predictable data set. 2,500 rows is enough to feel the
+// difference virtualization makes, but still loads fast.
 export function createEmployeeRows(count = 2500) {
   return Array.from({ length: count }, (_, index) => {
     const rowNumber = index + 1;

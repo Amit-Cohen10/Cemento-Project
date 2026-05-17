@@ -1,86 +1,123 @@
 # Reusable React Data Table
 
-This project implements the client-side assignment from the provided PDF. It is a generic editable data table built with plain JavaScript and React, without TypeScript and without using a table library.
+Client-side assignment from the PDF: a generic, editable data table built with
+plain JavaScript and React (no TypeScript, no table library).
 
-## Features
+## Run locally
 
-- Generic table input: `columns` schema plus `data` rows.
-- Different renderers and editors for `string`, `number`, `boolean`, and `select` columns.
-- Column visibility picker.
-- Direct cell editing with local draft state.
-- Explicit save and cancel actions.
-- Custom row virtualization for large data sets.
-- Unit-tested helper functions for row updates, parsing, column filtering, and virtualization.
-- Small enough to be realistic for a focused three-day junior assignment.
+You need Node.js (version 18 or newer) and npm. If you don't have them yet:
 
-## Run Locally
+- **macOS**: `brew install node`
+- **Windows / Linux**: install from <https://nodejs.org/en/download>
 
-Install dependencies and start the Vite dev server:
+Then, from the project root:
 
 ```bash
-npm install
-npm run dev
+npm install   # install dependencies (run once after cloning)
+npm run dev   # start the Vite dev server (open the URL it prints)
+npm test      # run the unit tests
+npm run build # production build into ./dist
 ```
 
-Run the unit tests:
+That's the whole setup. The project ships with everything it needs in
+`package.json`, so a fresh `git clone` + `npm install` + `npm run dev` is all
+that's required.
 
-```bash
-npm test
+## What the table does
+
+- Renders four column types: `string`, `number`, `boolean`, `select`.
+- Shows / hides columns from a toolbar (a Column Picker).
+- Edits cells inline: click a cell, type or pick a value, press `Enter` to
+  commit or `Escape` to cancel.
+- Tracks unsaved changes locally and saves them with a "Save changes" button
+  (or rolls them back with "Cancel"). No backend involved.
+- Renders only the rows in the viewport (custom virtualization) so it stays
+  smooth with thousands of rows.
+- Keyboard accessible: every cell is focusable and editable with Enter.
+
+## Project structure
+
+```
+src/
+  App.jsx                       Demo page that feeds the table its data
+  main.jsx                      React entry point
+  styles.css                    All styling
+  components/DataTable/
+    DataTable.jsx               Main component: toolbar + virtualized body
+    TableHeader.jsx             Sticky header row
+    TableRow.jsx                One row, memoized
+    EditableCell.jsx            One cell: read view + matching editor per type
+    ColumnPicker.jsx            Show / hide columns toolbar
+  hooks/
+    useEditableTable.js         Saved rows, drafts, visibility, editingCell
+    useVirtualRows.js           React glue around the virtualization math
+  utils/
+    cellValueUtils.js           format / parse / align cell values
+    columnUtils.js              sort / filter / toggle columns
+    rowUtils.js                 immutable draft and row operations
+    virtualRows.js              pure virtualization math (unit-tested)
+  data/
+    mockTableData.js            Deterministic 2,500-row demo data set
+test/
+  *.test.js                     node:test unit tests for the helpers
 ```
 
-If `npm` is not available on the machine, install Node.js from the official Node.js installer or use another package manager that can install the dependencies from `package.json`.
+## Schema
 
-## Assignment Schema
-
-The table accepts the required assignment shape:
+The table accepts exactly the shape from the PDF:
 
 ```js
 {
   columns: [
-    {
-      id: "name",
-      ordinalNo: 1,
-      title: "Name",
-      type: "string",
-      width: 190,
-    },
+    { id, ordinalNo, title, type, width },
+    ...
   ],
   data: [
-    {
-      id: "employee-1",
-      name: "Amit Cohen",
-    },
-  ],
+    { id, [columnId]: value, ... },
+    ...
+  ]
 }
 ```
 
-The implementation documents two small schema additions:
+### Schema extensions
 
-- `options`: used by `select` columns so the editor knows which values are allowed.
-- `format`: used by number columns for display hints such as `currency`.
+The PDF allows adding properties to the column schema as long as the reason is
+documented. Two were added:
 
-These additions do not change or remove any required assignment fields.
+- **`options`** — only on `type: "select"` columns. It tells the editor which
+  values the user is allowed to pick. The PDF Q&A says this is up to the
+  implementer to design, so the column schema is the most natural place.
+- **`format`** — optional hint for `type: "number"` columns. Currently
+  supports `"currency"`. Without it, numbers are formatted with thousand
+  separators. This lets one numeric column ("Salary") render as USD while
+  another ("Tickets") renders as a plain number.
 
-## Code Structure
+No existing property was removed or changed.
 
-- `src/App.jsx`: creates the demo data and renders the table.
-- `src/components/DataTable`: reusable table UI components.
-- `src/hooks/useEditableTable.js`: local save/cancel/editing state.
-- `src/hooks/useVirtualRows.js`: browser scroll state for virtualization.
-- `src/utils`: pure helper functions with unit tests.
-- `src/data/mockTableData.js`: deterministic large mock data set.
-- `docs/hebrew-guide.md`: Hebrew explanation for interview preparation.
+## Performance choices
 
-## Performance Notes
+- **Virtualization**: only the rows currently in the viewport plus a small
+  overscan buffer are rendered. The math lives in a pure function
+  (`utils/virtualRows.js`) so it can be unit-tested. The hook
+  (`hooks/useVirtualRows.js`) hooks up the actual scroll listener.
+- **Row lookup as a Map**: `useEditableTable` builds a `Map<rowId, row>`
+  with `useMemo`, so each cell edit is O(1) instead of O(n).
+- **Memoization**: `TableRow` and `EditableCell` are wrapped in `React.memo`,
+  and the callbacks they receive are wrapped in `useCallback`, so editing one
+  cell only re-renders the cells that actually changed.
+- **CSS variable for row height**: `--row-height` is set once on the table
+  wrapper and read by every `td`, so the virtualization math and the CSS
+  always agree.
 
-The table is optimized for large data sets by rendering only the visible rows plus a small overscan buffer. The virtual row calculation is kept in a pure helper so it is easy to test and explain.
+## Tests
 
-React optimization is used where it is helpful:
+`npm test` runs the helper-function unit tests with Node's built-in test
+runner (`node --test`). No extra test dependencies needed.
 
-- `useMemo` for derived columns, widths, rows, and virtual ranges.
-- `useCallback` for stable table actions.
-- `React.memo` for repeated table rows and cells.
+Covered:
 
-## Static/CDN Fallback Note
-
-The preferred submission is this Vite project. If package installation is temporarily unavailable, a static fallback could be created with React and ReactDOM loaded from a CDN. That fallback is less professional for GitHub submission and depends on network access, so it should only be used for emergency demo purposes.
+- `cellValueUtils`: parse, format, normalizeOptions, getColumnAlignment.
+- `columnUtils`: sortColumns, getVisibleColumns, toggleColumnId.
+- `rowUtils`: updateRowCell, draft set/has/remove, applyDraftChanges,
+  countDraftCells.
+- `virtualRows`: getVirtualRange across normal, empty and edge inputs.

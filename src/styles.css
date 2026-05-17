@@ -226,7 +226,9 @@ th {
 
 td {
   position: relative;
-  height: 52px;
+  /* Row height is set inline from the JS DEFAULT_ROW_HEIGHT so virtualization
+     math and CSS stay in sync from one source of truth. */
+  height: var(--row-height, 52px);
   padding: 0 14px;
   border-bottom: 1px solid #edf1f6;
   color: #1f2937;

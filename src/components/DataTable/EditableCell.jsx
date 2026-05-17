@@ -6,6 +6,13 @@ import {
   parseCellValue,
 } from "../../utils/cellValueUtils.js";
 
+/*
+ * One cell of the table.
+ * When the user clicks it we swap the read view for the matching editor
+ * (text input, number input, select, or checkbox) based on the column type.
+ * Wrapped in React.memo because there are a lot of these on screen and
+ * most of them don't change between renders.
+ */
 export const EditableCell = memo(function EditableCell({
   rowId,
   column,
@@ -24,6 +31,7 @@ export const EditableCell = memo(function EditableCell({
     onStartEdit(rowId, column.id);
   };
 
+  // Keyboard support: Enter on a focused cell opens the editor.
   const handleCellKeyDown = (event) => {
     if (isEditing) {
       return;
@@ -35,6 +43,7 @@ export const EditableCell = memo(function EditableCell({
     }
   };
 
+  // While editing: Enter commits the value, Escape rolls it back.
   const handleEditorKeyDown = (event) => {
     if (event.key === "Enter") {
       event.preventDefault();
@@ -51,6 +60,8 @@ export const EditableCell = memo(function EditableCell({
   const renderEditor = () => {
     if (column.type === "boolean") {
       return (
+        // stopPropagation prevents the label click from bubbling to the td,
+        // which would call startEditing again.
         <label className="checkboxEditor" onClick={(event) => event.stopPropagation()}>
           <input
             autoFocus
@@ -87,6 +98,8 @@ export const EditableCell = memo(function EditableCell({
       );
     }
 
+    // Default editor: text or number input. Using type="number" gives us the
+    // built-in numeric keyboard on mobile and basic validation for free.
     return (
       <input
         autoFocus
@@ -128,6 +141,7 @@ export const EditableCell = memo(function EditableCell({
       style={{ width: column.width }}
     >
       {isEditing ? renderEditor() : renderValue()}
+      {/* Little orange dot shows the user this cell has unsaved changes. */}
       {isDirty && <span className="dirtyMarker" title="Unsaved change" />}
     </td>
   );

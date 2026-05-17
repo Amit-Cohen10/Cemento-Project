@@ -9,14 +9,10 @@ import {
   setDraftCell,
 } from "../utils/rowUtils.js";
 
-/**
- * Owns all editable table state:
- * - saved rows
- * - dirty draft cells
- * - visible columns
- * - currently edited cell
- *
- * Keeping this in one hook makes the DataTable component easier to read.
+/*
+ * Keeps all the table state in one place: saved rows, draft (unsaved) cells,
+ * which columns are visible, and which cell is currently being edited.
+ * I put it in a custom hook so DataTable.jsx stays focused on the UI.
  */
 export function useEditableTable(initialRows, initialColumnIds) {
   const [rows, setRows] = useState(() => initialRows);
@@ -24,6 +20,8 @@ export function useEditableTable(initialRows, initialColumnIds) {
   const [visibleColumnIds, setVisibleColumnIds] = useState(() => initialColumnIds);
   const [editingCell, setEditingCell] = useState(null);
 
+  // If the parent passes a new data set we reset everything, otherwise we'd
+  // be showing drafts that belong to the old rows.
   useEffect(() => {
     setRows(initialRows);
     setDraftChanges({});
@@ -34,11 +32,24 @@ export function useEditableTable(initialRows, initialColumnIds) {
     setVisibleColumnIds(initialColumnIds);
   }, [initialColumnIds]);
 
+  // Build a Map from rowId to row so reads are O(1).
+  // Without this, every keystroke would do rows.find() which is O(n).
+  const rowsById = useMemo(() => {
+    const map = new Map();
+    for (const row of rows) {
+      map.set(row.id, row);
+    }
+    return map;
+  }, [rows]);
+
   const draftCellCount = useMemo(() => countDraftCells(draftChanges), [draftChanges]);
   const hasUnsavedChanges = draftCellCount > 0;
 
   const toggleColumnVisibility = useCallback((columnId) => {
     setVisibleColumnIds((currentIds) => toggleColumnId(currentIds, columnId));
+    // If the user hides the column they're editing, stop editing so we don't
+    // leave a stale editingCell pointing at a hidden column.
+    setEditingCell((current) => (current?.columnId === columnId ? null : current));
   }, []);
 
   const startEditing = useCallback((rowId, columnId) => {
@@ -51,14 +62,14 @@ export function useEditableTable(initialRows, initialColumnIds) {
 
   const updateDraftCell = useCallback(
     (rowId, columnId, value) => {
-      const savedRow = rows.find((row) => row.id === rowId);
+      const savedRow = rowsById.get(rowId);
       const savedValue = savedRow ? savedRow[columnId] : undefined;
 
       setDraftChanges((currentDrafts) =>
         setDraftCell(currentDrafts, rowId, columnId, value, savedValue),
       );
     },
-    [rows],
+    [rowsById],
   );
 
   const cancelCellEdit = useCallback((rowId, columnId) => {

@@ -9,13 +9,16 @@ import { TableRow } from "./TableRow.jsx";
 const DEFAULT_ROW_HEIGHT = 52;
 const DEFAULT_COLUMN_WIDTH = 150;
 
-/**
- * Generic reusable table.
- * It knows nothing about "employees"; it only needs a columns schema and rows.
+/*
+ * Generic table component.
+ * It only knows about "columns" and "rows", not about the meaning of the data,
+ * so we can drop it into any page that follows the same schema.
  */
 export function DataTable({ columns, initialData, rowHeight = DEFAULT_ROW_HEIGHT }) {
   const scrollRef = useRef(null);
 
+  // Sort once per column-schema change. The schema is small, but doing this
+  // inside useMemo means TableRow doesn't see a new array on every render.
   const sortedColumns = useMemo(() => sortColumns(columns), [columns]);
   const initialColumnIds = useMemo(
     () => sortedColumns.map((column) => column.id),
@@ -60,6 +63,9 @@ export function DataTable({ columns, initialData, rowHeight = DEFAULT_ROW_HEIGHT
     overscan: 10,
   });
 
+  // Map the virtual indexes to actual row objects.
+  // The filter protects against indexes that briefly fall outside the data,
+  // for example right after the rows array shrinks.
   const renderedRows = useMemo(
     () =>
       virtualRows.indexes
@@ -71,8 +77,16 @@ export function DataTable({ columns, initialData, rowHeight = DEFAULT_ROW_HEIGHT
     [rows, virtualRows.indexes],
   );
 
+  // Expose the row height to CSS as well so the stylesheet and the JS share
+  // one number. If we ever change DEFAULT_ROW_HEIGHT, both stay in sync.
+  const tableStyle = { "--row-height": `${rowHeight}px` };
+
   return (
-    <section className="dataTableShell" aria-label="Reusable editable data table">
+    <section
+      className="dataTableShell"
+      style={tableStyle}
+      aria-label="Reusable editable data table"
+    >
       <div className="tableToolbar">
         <ColumnPicker
           columns={sortedColumns}
@@ -125,6 +139,8 @@ export function DataTable({ columns, initialData, rowHeight = DEFAULT_ROW_HEIGHT
           <TableHeader columns={visibleColumns} />
 
           <tbody>
+            {/* Spacer rows replace the rows we skipped, so the scrollbar
+                stays the right size and the scroll position feels normal. */}
             {virtualRows.paddingTop > 0 && (
               <tr className="spacerRow" style={{ height: virtualRows.paddingTop }}>
                 <td className="spacerCell" colSpan={visibleColumns.length} />

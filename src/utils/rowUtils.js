@@ -1,9 +1,12 @@
+// Object.prototype.hasOwnProperty.call protects us if someone (somehow) has
+// a column id called "constructor" or "toString". Using the prototype method
+// directly is safer than row.hasOwnProperty(...) on an unknown object.
 function hasOwn(object, key) {
   return Object.prototype.hasOwnProperty.call(object, key);
 }
 
-// Updates one cell and returns a new rows array.
-// This is intentionally immutable so React can detect the state change.
+// Return a new rows array with one cell updated.
+// Immutable on purpose: React only re-renders if it sees a new reference.
 export function updateRowCell(rows, rowId, columnId, value) {
   return rows.map((row) => {
     if (row.id !== rowId) {
@@ -17,7 +20,8 @@ export function updateRowCell(rows, rowId, columnId, value) {
   });
 }
 
-// Reads a value from drafts first, then falls back to the saved row.
+// If a draft value exists for this cell, show that; otherwise fall back to
+// the saved value on the row.
 export function getDraftCellValue(row, draftChanges, columnId) {
   const rowDraft = draftChanges[row.id];
 
@@ -28,13 +32,14 @@ export function getDraftCellValue(row, draftChanges, columnId) {
   return row[columnId];
 }
 
-// Checks if one cell has a local unsaved value.
+// Does this cell have an unsaved value?
 export function hasDraftCell(draftChanges, rowId, columnId) {
   return Boolean(draftChanges[rowId] && hasOwn(draftChanges[rowId], columnId));
 }
 
-// Adds or removes a draft value.
-// If the draft matches the saved value, it is removed to keep the dirty state honest.
+// Write a draft value for one cell.
+// If the new value matches the saved one, we drop the draft instead, so the
+// "unsaved" indicator only shows up when the value really changed.
 export function setDraftCell(draftChanges, rowId, columnId, value, savedValue) {
   if (Object.is(value, savedValue)) {
     return removeDraftCell(draftChanges, rowId, columnId);
@@ -49,7 +54,8 @@ export function setDraftCell(draftChanges, rowId, columnId, value, savedValue) {
   };
 }
 
-// Removes one draft cell without touching other dirty cells.
+// Remove a single draft cell without touching other dirty cells in the row.
+// If the row has no dirty cells left, drop the row entry too.
 export function removeDraftCell(draftChanges, rowId, columnId) {
   if (!draftChanges[rowId]) {
     return draftChanges;
@@ -70,7 +76,7 @@ export function removeDraftCell(draftChanges, rowId, columnId) {
   };
 }
 
-// Applies all dirty cells to the saved rows.
+// Merge all draft cells back into the saved rows. Called from "Save changes".
 export function applyDraftChanges(rows, draftChanges) {
   return rows.map((row) => {
     const rowDraft = draftChanges[row.id];
@@ -86,7 +92,8 @@ export function applyDraftChanges(rows, draftChanges) {
   });
 }
 
-// Counts dirty cells, not dirty rows.
+// Count the total number of dirty cells (not dirty rows). I show this in the
+// toolbar so the user knows exactly how many edits are waiting to be saved.
 export function countDraftCells(draftChanges) {
   return Object.values(draftChanges).reduce(
     (total, rowDraft) => total + Object.keys(rowDraft).length,

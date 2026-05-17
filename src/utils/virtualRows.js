@@ -9,8 +9,14 @@ function range(startIndex, endIndex) {
   );
 }
 
-// Calculates which row indexes should be rendered for a virtualized table.
-// The function is pure so it can be unit-tested without React or the browser.
+/*
+ * Pure function that returns which row indexes should actually be rendered.
+ * Keeping it pure (no React, no DOM) means I can unit-test it directly with
+ * node:test and reason about it without a browser.
+ *
+ * overscan: how many extra rows to render above and below the viewport so
+ * fast scrolling doesn't show blank space for a frame.
+ */
 export function getVirtualRange({
   rowCount,
   rowHeight,
@@ -29,6 +35,8 @@ export function getVirtualRange({
     };
   }
 
+  // Defensive clamps: scrollTop can briefly go negative on some browsers
+  // during rubber-band scroll, and viewportHeight could be 0 on mount.
   const safeViewportHeight = Math.max(0, viewportHeight);
   const safeScrollTop = Math.max(0, scrollTop);
   const safeOverscan = Math.max(0, overscan);
@@ -42,6 +50,8 @@ export function getVirtualRange({
   return {
     startIndex,
     endIndex,
+    // The top/bottom paddings keep the scrollbar size correct even though
+    // we're only rendering a small window of rows.
     paddingTop: startIndex * rowHeight,
     paddingBottom: Math.max(0, (rowCount - endIndex - 1) * rowHeight),
     totalHeight: rowCount * rowHeight,

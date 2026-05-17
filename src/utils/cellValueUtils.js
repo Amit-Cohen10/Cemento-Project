@@ -1,3 +1,5 @@
+// Pre-built Intl formatters. I create them once at module level instead of on
+// every render because Intl.NumberFormat is surprisingly expensive to build.
 const currencyFormatter = new Intl.NumberFormat("en-US", {
   style: "currency",
   currency: "USD",
@@ -8,7 +10,9 @@ const numberFormatter = new Intl.NumberFormat("en-US", {
   maximumFractionDigits: 2,
 });
 
-// Normalizes select options so the rest of the table can handle one shape.
+// Select columns can pass options as plain strings (["Junior", "Senior"]) or
+// as { label, value } objects. This normalises both shapes so the rest of the
+// table only has to handle one.
 export function normalizeOptions(options = []) {
   return options.map((option) => {
     if (option && typeof option === "object") {
@@ -25,7 +29,9 @@ export function normalizeOptions(options = []) {
   });
 }
 
-// Converts user input into the correct value type for the column.
+// Take whatever the user typed in the input and turn it into the right type
+// for the column. Inputs always give us strings, so a "number" column needs
+// to convert the string back to a real number before saving.
 export function parseCellValue(column, rawValue) {
   if (column.type === "number") {
     if (rawValue === "" || rawValue === null || rawValue === undefined) {
@@ -45,6 +51,8 @@ export function parseCellValue(column, rawValue) {
   }
 
   if (column.type === "select" || column.type === "selection") {
+    // We compare as strings because <option value> is always a string,
+    // even when the original option value was a number.
     const matchingOption = normalizeOptions(column.options).find(
       (option) => String(option.value) === String(rawValue),
     );
@@ -55,7 +63,7 @@ export function parseCellValue(column, rawValue) {
   return String(rawValue ?? "");
 }
 
-// Converts a saved value into readable UI text.
+// Turn a saved value into the text the user actually sees in the cell.
 export function formatCellValue(column, value) {
   if (value === null || value === undefined || value === "") {
     return "Not set";
@@ -82,7 +90,8 @@ export function formatCellValue(column, value) {
   return String(value);
 }
 
-// Keeps alignment consistent across the whole table.
+// Numbers feel right-aligned, booleans feel center-aligned (the pill is
+// small), everything else stays left.
 export function getColumnAlignment(column) {
   if (column.type === "number") {
     return "right";

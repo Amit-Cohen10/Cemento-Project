@@ -3,4 +3,9 @@ dist
 .DS_Store
 coverage
 *.log
+.vite
+
+# Local notes and tooling that should not be in the repo
 Client assignment - Junior.pdf
+personal-notes/
+.claude/

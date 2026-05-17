@@ -3,8 +3,9 @@ import { DataTable } from "./components/DataTable/DataTable.jsx";
 import { employeeColumns, createEmployeeRows } from "./data/mockTableData.js";
 
 function App() {
-  // The rows are generated once so the table receives a stable data set.
-  // This matters because the table keeps its own local editing state.
+  // useMemo so the rows array keeps the same reference between renders.
+  // DataTable resets its draft edits when initialData changes, so an unstable
+  // reference here would wipe the user's unsaved changes every render.
   const rows = useMemo(() => createEmployeeRows(2500), []);
 
   return (
