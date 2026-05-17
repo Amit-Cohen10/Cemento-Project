@@ -34,7 +34,7 @@ const teamOptions = ["Platform", "Growth", "Core Product", "Operations", "Infras
 faker.seed(SEED_VALUE);
 
 const rows = Array.from({ length: ROW_COUNT }, (_, index) => ({
-  id: `employee-${index + 1}`,
+  id: String(index + 1),
   name: faker.person.fullName(),
   role: faker.helpers.arrayElement(roleOptions),
   salary: faker.number.int({ min: 60000, max: 200000 }),

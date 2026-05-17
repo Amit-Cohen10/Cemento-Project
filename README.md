@@ -57,7 +57,8 @@ Everything the project needs is listed in `package.json`, so a fresh
   toolbar shows the invalid count, and Save is disabled until all
   visible cells are valid.
 - **Add row / Delete row**: "+ Add row" creates an empty row at the top;
-  a small `×` on every row deletes it. These row-level changes are applied
+  a small `×` on every row deletes it. New rows automatically get the next
+  unique numeric-looking string id. These row-level changes are applied
   immediately to local state/localStorage and can be undone.
 - **localStorage persistence**: saved rows and column visibility are
   written to `localStorage` after every change. Refreshing the page keeps
@@ -130,7 +131,7 @@ public/
 scripts/
   generateSeed.js               One-off Faker-based seed generator
 test/
-  *.test.js                     node:test unit tests for the helpers (70 tests)
+  *.test.js                     node:test unit tests for the helpers (75 tests)
 ```
 
 ## Schema
@@ -150,10 +151,14 @@ The table accepts exactly the shape from the PDF:
 }
 ```
 
+The demo keeps row ids numeric-looking (`"1"`, `"2"`, `"2501"`) while still
+storing them as strings, which matches the PDF's `id: string` requirement.
+Existing older ids such as `"employee-42"` are normalized locally to `"42"`.
+
 ### Schema extensions
 
 The PDF allows adding properties to the column schema as long as the reason
-is documented. Two were added:
+is documented. Three were added:
 
 - **`options`** — only on `type: "select"` columns. It tells the editor
   which values the user is allowed to pick. The PDF Q&A says this is up to
@@ -162,6 +167,9 @@ is documented. Two were added:
   supports `"currency"`. Without it, numbers are formatted with thousand
   separators. This lets one numeric column ("Salary") render as USD while
   another ("Tickets") renders as a plain number.
+- **`readOnly`** — optional boolean for columns that should display but not
+  be edited. The demo uses this for the row `id`, because that value is also
+  the row identity used for React keys, drafts, selection and history.
 
 The `type` enum is also extended with `"date"`. The PDF lists
 `"string, numbers, boolean, selection list …"` with a trailing ellipsis,
@@ -192,13 +200,13 @@ No existing property was removed or had its type changed.
 `npm test` runs the helper-function unit tests with Node's built-in test
 runner (`node --test`). No extra test dependencies needed.
 
-Covered (70 tests total):
+Covered (75 tests total):
 
 - `cellValueUtils`: parse, format, normalizeOptions, getColumnAlignment,
   date round-trip.
 - `columnUtils`: sortColumns, getVisibleColumns, toggleColumnId.
 - `rowUtils`: updateRowCell, draft set/has/remove, applyDraftChanges,
-  countDraftCells.
+  countDraftCells, numeric row id normalization.
 - `virtualRows`: getVirtualRange across normal, empty and edge inputs.
 - `sortUtils`: cycle, asc/desc, numbers / strings / booleans / dates.
 - `filterUtils`: empty query, multi-column match, hidden columns, nulls.

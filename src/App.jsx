@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
 import { DataTable } from "./components/DataTable/DataTable.jsx";
 import { employeeColumns } from "./data/mockTableData.js";
+import {
+  getNextNumericRowId,
+  normalizeRowsToUniqueNumericIds,
+} from "./utils/rowUtils.js";
 
 function App() {
   const [rows, setRows] = useState(null);
@@ -17,7 +21,7 @@ function App() {
         }
         const seedRows = await response.json();
         if (isMounted) {
-          setRows(seedRows.map((row) => ({ ...row })));
+          setRows(normalizeRowsToUniqueNumericIds(seedRows));
         }
       } catch (error) {
         if (isMounted) {
@@ -57,7 +61,12 @@ function App() {
           Could not load the demo rows. {loadError}
         </section>
       ) : rows ? (
-        <DataTable columns={employeeColumns} initialData={rows} />
+        <DataTable
+          columns={employeeColumns}
+          initialData={rows}
+          createRowId={getNextNumericRowId}
+          normalizeRows={normalizeRowsToUniqueNumericIds}
+        />
       ) : (
         <section className="dataTableShell tableLoadState" role="status">
           Loading table data...

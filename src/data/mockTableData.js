@@ -18,7 +18,8 @@
  * uses scripts/generateSeed.js.
  *
  * The column set covers all four required types plus a bonus "date" type:
- *   - string  (name, location, team)
+ *   - string  (id, name, location, team) -- id is numeric-looking but
+ *             stays a string to match the PDF schema
  *   - number  (salary, ticketsClosed)
  *   - boolean (active)
  *   - select  (role, level)
@@ -29,6 +30,14 @@ const roleOptions = ["Frontend", "Backend", "Full Stack", "QA", "Product"];
 const levelOptions = ["Junior", "Mid", "Senior", "Lead"];
 
 export const employeeColumns = [
+  {
+    id: "id",
+    ordinalNo: 0,
+    title: "ID",
+    type: "string",
+    width: 130,
+    readOnly: true,
+  },
   {
     id: "name",
     ordinalNo: 1,

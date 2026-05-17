@@ -3,8 +3,10 @@ import assert from "node:assert/strict";
 import {
   applyDraftChanges,
   countDraftCells,
+  getNextNumericRowId,
   getDraftCellValue,
   hasDraftCell,
+  normalizeRowsToUniqueNumericIds,
   removeDraftCell,
   setDraftCell,
   updateRowCell,
@@ -103,4 +105,34 @@ test("applyDraftChanges keeps the same reference for rows without drafts", () =>
   const next = applyDraftChanges(rows, { "row-1": { name: "Noa" } });
   // row-2 didn't change, so the reference should be preserved.
   assert.equal(next[1], rows[1]);
+});
+
+test("normalizeRowsToUniqueNumericIds migrates display ids to numeric strings", () => {
+  const rows = [
+    { id: "employee-7", name: "Amit" },
+    { id: "002", name: "Maya" },
+    { id: "employee-7", name: "Noa" },
+    { id: "custom", name: "Dana" },
+  ];
+
+  const next = normalizeRowsToUniqueNumericIds(rows);
+
+  assert.deepEqual(next.map((row) => row.id), ["7", "2", "1", "3"]);
+  assert.equal(typeof next[0].id, "string");
+});
+
+test("normalizeRowsToUniqueNumericIds preserves row references when ids already fit", () => {
+  const rows = [{ id: "1", name: "Amit" }, { id: "2", name: "Maya" }];
+  const next = normalizeRowsToUniqueNumericIds(rows);
+
+  assert.equal(next[0], rows[0]);
+  assert.equal(next[1], rows[1]);
+});
+
+test("getNextNumericRowId returns the next id after the highest current id", () => {
+  assert.equal(
+    getNextNumericRowId([{ id: "1" }, { id: "9" }, { id: "employee-12" }]),
+    "13",
+  );
+  assert.equal(getNextNumericRowId([]), "1");
 });

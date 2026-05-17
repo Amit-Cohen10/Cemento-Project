@@ -24,7 +24,13 @@ const SELECT_COLUMN_WIDTH = 44;
  * Render pipeline for the body:
  *   rows -> applyFilters (panel) -> sort (header click) -> virtualize -> <tr>s
  */
-export function DataTable({ columns, initialData, rowHeight = DEFAULT_ROW_HEIGHT }) {
+export function DataTable({
+  columns,
+  initialData,
+  rowHeight = DEFAULT_ROW_HEIGHT,
+  createRowId,
+  normalizeRows,
+}) {
   const scrollRef = useRef(null);
 
   // Sort once per column-schema change. The schema is small, but doing this
@@ -61,7 +67,7 @@ export function DataTable({ columns, initialData, rowHeight = DEFAULT_ROW_HEIGHT
     setSelectionForVisible,
     clearSelection,
     deleteSelectedRows,
-  } = useEditableTable(initialData, initialColumnIds);
+  } = useEditableTable(initialData, initialColumnIds, { createRowId, normalizeRows });
 
   const [sortState, setSortState] = useState(null);
   // Per-column filters: each entry is { id, columnId, operator, value }.

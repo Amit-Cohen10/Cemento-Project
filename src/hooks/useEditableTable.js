@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { toggleColumnId } from "../utils/columnUtils.js";
+import {
+  reconcileVisibleColumnIds,
+  toggleColumnId,
+} from "../utils/columnUtils.js";
 import {
   canRedo as historyCanRedo,
   canUndo as historyCanUndo,
@@ -21,6 +24,14 @@ import { loadFromStorage, saveToStorage } from "../utils/storage.js";
 const STORAGE_KEY_ROWS = "data";
 const STORAGE_KEY_COLUMNS = "columns";
 
+function createDefaultRowId() {
+  return `row-${Date.now()}-${Math.floor(Math.random() * 1e4)}`;
+}
+
+function identityRows(rows) {
+  return rows;
+}
+
 /*
  * Keeps all the table state in one place: saved rows, draft (unsaved) cells,
  * which columns are visible, and which cell is currently being edited.
@@ -33,14 +44,22 @@ const STORAGE_KEY_COLUMNS = "columns";
  * (a) they can be large, and (b) a fresh session starting "clean" is the
  * expected behaviour in most apps.
  */
-export function useEditableTable(initialRows, initialColumnIds) {
+export function useEditableTable(initialRows, initialColumnIds, options = {}) {
+  const {
+    createRowId = createDefaultRowId,
+    normalizeRows = identityRows,
+  } = options;
+
   // Hydrate from localStorage first so refreshing the page keeps saved edits.
   const [rows, setRows] = useState(() =>
-    loadFromStorage(STORAGE_KEY_ROWS, initialRows),
+    normalizeRows(loadFromStorage(STORAGE_KEY_ROWS, initialRows)),
   );
   const [draftChanges, setDraftChanges] = useState({});
   const [visibleColumnIds, setVisibleColumnIds] = useState(() =>
-    loadFromStorage(STORAGE_KEY_COLUMNS, initialColumnIds),
+    reconcileVisibleColumnIds(
+      loadFromStorage(STORAGE_KEY_COLUMNS, initialColumnIds),
+      initialColumnIds,
+    ),
   );
   const [editingCell, setEditingCell] = useState(null);
   const [history, setHistory] = useState(() => createHistory());
@@ -135,11 +154,11 @@ export function useEditableTable(initialRows, initialColumnIds) {
   // Add a new empty row at the top. The cells render "Not set" until the
   // user clicks them and types a value.
   const addRow = useCallback(() => {
-    const newRow = {
-      id: `row-${Date.now()}-${Math.floor(Math.random() * 1e4)}`,
-    };
-    commitRowsWithHistory((currentRows) => [newRow, ...currentRows]);
-  }, [commitRowsWithHistory]);
+    commitRowsWithHistory((currentRows) => [
+      { id: createRowId(currentRows) },
+      ...currentRows,
+    ]);
+  }, [commitRowsWithHistory, createRowId]);
 
   // Remove a row by id and clean up any drafts / editing state pointing at it.
   const deleteRow = useCallback(

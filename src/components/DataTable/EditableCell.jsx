@@ -29,8 +29,12 @@ export const EditableCell = memo(function EditableCell({
   const alignment = getColumnAlignment(column);
   const displayValue = formatCellValue(column, value);
   const hasError = Boolean(error);
+  const isReadOnly = Boolean(column.readOnly);
 
   const startEditing = () => {
+    if (isReadOnly) {
+      return;
+    }
     onStartEdit(rowId, column.id);
   };
 
@@ -40,7 +44,7 @@ export const EditableCell = memo(function EditableCell({
       return;
     }
 
-    if (event.key === "Enter") {
+    if (!isReadOnly && event.key === "Enter") {
       event.preventDefault();
       startEditing();
     }
@@ -161,12 +165,12 @@ export const EditableCell = memo(function EditableCell({
     <td
       className={`editableCell align-${alignment} ${isDirty ? "isDirty" : ""} ${
         hasError ? "isInvalid" : ""
-      }`}
+      } ${isReadOnly ? "isReadOnly" : ""}`}
       onClick={startEditing}
       onKeyDown={handleCellKeyDown}
-      tabIndex={0}
+      tabIndex={isReadOnly ? undefined : 0}
       style={{ width: column.width }}
-      title={cellTitle}
+      title={isReadOnly ? "Row ID" : cellTitle}
       aria-invalid={hasError ? "true" : undefined}
     >
       {isEditing ? renderEditor() : renderValue()}

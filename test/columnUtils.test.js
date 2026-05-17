@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   getVisibleColumns,
+  reconcileVisibleColumnIds,
   sortColumns,
   toggleColumnId,
 } from "../src/utils/columnUtils.js";
@@ -51,4 +52,19 @@ test("toggleColumnId does not mutate the input array", () => {
 
   assert.deepEqual(original, ["active", "name"]);
   assert.notEqual(next, original);
+});
+
+test("reconcileVisibleColumnIds appends schema columns added after storage", () => {
+  assert.deepEqual(
+    reconcileVisibleColumnIds(["name", "role"], ["id", "name", "role"]),
+    ["name", "role", "id"],
+  );
+});
+
+test("reconcileVisibleColumnIds removes stale ids and falls back on bad storage", () => {
+  assert.deepEqual(
+    reconcileVisibleColumnIds(["ghost", "name"], ["id", "name"]),
+    ["name", "id"],
+  );
+  assert.deepEqual(reconcileVisibleColumnIds(null, ["id", "name"]), ["id", "name"]);
 });

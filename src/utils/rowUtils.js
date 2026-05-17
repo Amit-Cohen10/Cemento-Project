@@ -5,6 +5,57 @@ function hasOwn(object, key) {
   return Object.prototype.hasOwnProperty.call(object, key);
 }
 
+function normalizeNumericIdValue(value) {
+  const text = String(value ?? "").trim();
+  if (!text) return null;
+
+  const exactNumber = text.match(/^\d+$/);
+  if (exactNumber) {
+    return String(Number(text));
+  }
+
+  // Migration path for older demo rows such as "employee-42".
+  const trailingNumber = text.match(/(\d+)$/);
+  return trailingNumber ? String(Number(trailingNumber[1])) : null;
+}
+
+// Keep row ids as strings (matching the PDF schema) while making their
+// visible value numeric-only and unique.
+export function normalizeRowsToUniqueNumericIds(rows) {
+  const usedIds = new Set();
+  let nextId = 1;
+
+  const takeNextId = () => {
+    while (usedIds.has(String(nextId))) {
+      nextId += 1;
+    }
+    const id = String(nextId);
+    usedIds.add(id);
+    nextId += 1;
+    return id;
+  };
+
+  return rows.map((row) => {
+    const candidate = normalizeNumericIdValue(row.id);
+    const id = candidate && !usedIds.has(candidate) ? candidate : takeNextId();
+    usedIds.add(id);
+
+    return row.id === id ? row : { ...row, id };
+  });
+}
+
+export function getNextNumericRowId(rows) {
+  let maxId = 0;
+
+  for (const row of rows) {
+    const numericId = normalizeNumericIdValue(row.id);
+    if (!numericId) continue;
+    maxId = Math.max(maxId, Number(numericId));
+  }
+
+  return String(maxId + 1);
+}
+
 // Return a new rows array with one cell updated.
 // Immutable on purpose: React only re-renders if it sees a new reference.
 export function updateRowCell(rows, rowId, columnId, value) {

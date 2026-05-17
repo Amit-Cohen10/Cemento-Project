@@ -12,6 +12,27 @@ export function getVisibleColumns(columns, visibleColumnIds) {
   return sortColumns(columns).filter((column) => visibleSet.has(column.id));
 }
 
+// Merge stored visibility with the current schema:
+// - remove ids that no longer exist
+// - append new schema ids that were not present when localStorage was saved
+// This keeps localStorage useful without hiding newly added columns forever.
+export function reconcileVisibleColumnIds(storedIds, allColumnIds) {
+  if (!Array.isArray(storedIds) || storedIds.length === 0) {
+    return allColumnIds;
+  }
+
+  const allIdsSet = new Set(allColumnIds);
+  const nextIds = storedIds.filter((id) => allIdsSet.has(id));
+
+  for (const id of allColumnIds) {
+    if (!nextIds.includes(id)) {
+      nextIds.push(id);
+    }
+  }
+
+  return nextIds.length > 0 ? nextIds : allColumnIds;
+}
+
 // Add or remove one column id from the visible list. I keep at least one
 // column visible because an empty table looks broken.
 export function toggleColumnId(visibleColumnIds, columnId) {
