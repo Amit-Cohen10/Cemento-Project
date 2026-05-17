@@ -61,7 +61,11 @@ button {
 }
 
 .appShell {
-  width: min(1440px, calc(100vw - 32px));
+  /* Cap the layout at 1800px so the table has enough room to lay out all
+     nine columns without the table getting a horizontal scrollbar on a
+     standard 1920x1080 monitor. On wider screens, the calc keeps a 24px
+     gutter on each side so the table never touches the viewport edge. */
+  width: min(1800px, calc(100vw - 32px));
   margin: 0 auto;
   padding: 32px 0;
 }
