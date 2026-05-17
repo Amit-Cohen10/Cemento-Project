@@ -13,16 +13,24 @@ import { memo, useMemo } from "react";
  * and there's no need for useState or a click-outside listener -- one of
  * the rare cases where the platform gives us the right primitive.
  *
- * I disable the last checked option so the user can't accidentally hide
- * every column and end up with an empty table.
+ * Two shortcut buttons inside the panel ("Show all", "Hide all") let
+ * the user flip many columns at once instead of clicking through every
+ * checkbox. "Hide all" intentionally leaves the first column visible so
+ * the table never ends up with zero columns -- mirrors the invariant in
+ * columnUtils.toggleColumnId.
  */
 export const ColumnPicker = memo(function ColumnPicker({
   columns,
   visibleColumnIds,
   onToggleColumn,
+  onShowAll,
+  onHideAll,
 }) {
   // A Set makes the "is this id visible?" check O(1) instead of O(n).
   const visibleSet = useMemo(() => new Set(visibleColumnIds), [visibleColumnIds]);
+
+  const allVisible = visibleColumnIds.length === columns.length;
+  const onlyOneVisible = visibleColumnIds.length <= 1;
 
   return (
     <details className="columnPicker">
@@ -43,6 +51,27 @@ export const ColumnPicker = memo(function ColumnPicker({
         <p className="columnPickerHint">
           Pick which columns appear in the table.
         </p>
+
+        <div className="columnPickerActions">
+          <button
+            type="button"
+            className="columnPickerActionButton"
+            onClick={onShowAll}
+            disabled={allVisible}
+          >
+            Show all
+          </button>
+          <button
+            type="button"
+            className="columnPickerActionButton"
+            onClick={onHideAll}
+            disabled={onlyOneVisible}
+            title="Hides every column except the first one"
+          >
+            Hide all
+          </button>
+        </div>
+
         <div className="columnToggleList">
           {columns.map((column) => {
             const isVisible = visibleSet.has(column.id);

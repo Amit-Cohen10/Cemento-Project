@@ -53,6 +53,7 @@ export function DataTable({
     pendingNewRowIds,
     hasUnsavedChanges,
     toggleColumnVisibility,
+    replaceVisibleColumnIds,
     startEditing,
     stopEditing,
     updateDraftCell,
@@ -101,6 +102,19 @@ export function DataTable({
   const handleClearFilters = useCallback(() => {
     setFilters([]);
   }, []);
+
+  // Column visibility presets used by the dropdown's Show all / Hide all
+  // buttons. "Hide all" keeps the first column visible so the table never
+  // collapses to zero columns -- same invariant the per-checkbox toggle
+  // enforces in columnUtils.toggleColumnId.
+  const handleShowAllColumns = useCallback(() => {
+    replaceVisibleColumnIds(sortedColumns.map((column) => column.id));
+  }, [replaceVisibleColumnIds, sortedColumns]);
+
+  const handleHideAllColumns = useCallback(() => {
+    if (sortedColumns.length === 0) return;
+    replaceVisibleColumnIds([sortedColumns[0].id]);
+  }, [replaceVisibleColumnIds, sortedColumns]);
 
   const visibleColumns = useMemo(
     () => getVisibleColumns(sortedColumns, visibleColumnIds),
@@ -262,6 +276,8 @@ export function DataTable({
             columns={sortedColumns}
             visibleColumnIds={visibleColumnIds}
             onToggleColumn={toggleColumnVisibility}
+            onShowAll={handleShowAllColumns}
+            onHideAll={handleHideAllColumns}
           />
         </div>
 

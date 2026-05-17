@@ -123,6 +123,18 @@ export function useEditableTable(initialRows, initialColumnIds, options = {}) {
     setEditingCell((current) => (current?.columnId === columnId ? null : current));
   }, []);
 
+  // Bulk version of toggleColumnVisibility -- used by the "Show all" /
+  // "Hide all" buttons in the column picker dropdown. I keep the
+  // editingCell cleanup in one place so any path that hides a column
+  // gets the same behaviour.
+  const replaceVisibleColumnIds = useCallback((nextIds) => {
+    setVisibleColumnIds(nextIds);
+    setEditingCell((current) => {
+      if (!current) return null;
+      return nextIds.includes(current.columnId) ? current : null;
+    });
+  }, []);
+
   const startEditing = useCallback((rowId, columnId) => {
     setEditingCell({ rowId, columnId });
   }, []);
@@ -354,6 +366,7 @@ export function useEditableTable(initialRows, initialColumnIds, options = {}) {
     hasUnsavedChanges,
     pendingNewRowIds,
     toggleColumnVisibility,
+    replaceVisibleColumnIds,
     startEditing,
     stopEditing,
     updateDraftCell,
