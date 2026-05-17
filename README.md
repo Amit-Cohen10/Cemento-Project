@@ -25,7 +25,9 @@ that's required.
 
 ## What the table does
 
-- Renders four column types: `string`, `number`, `boolean`, `select`.
+### Required features (from the PDF)
+
+- Renders five column types: `string`, `number`, `boolean`, `select`, `date`.
 - Shows / hides columns from a toolbar (a Column Picker).
 - Edits cells inline: click a cell, type or pick a value, press `Enter` to
   commit or `Escape` to cancel.
@@ -33,7 +35,21 @@ that's required.
   (or rolls them back with "Cancel"). No backend involved.
 - Renders only the rows in the viewport (custom virtualization) so it stays
   smooth with thousands of rows.
-- Keyboard accessible: every cell is focusable and editable with Enter.
+
+### Extra features (the PDF says "You may add any other feature that you want")
+
+- **Click-to-sort** on any column header. Cycle: unsorted → ascending →
+  descending → unsorted. Numbers, booleans, dates and strings each use a
+  sensible comparator.
+- **Global search** across every visible column, case-insensitive.
+- **Add row / Delete row**: "+ Add row" button creates an empty row at the
+  top; a small `×` on every row deletes it (with confirmation by way of the
+  delete-then-save-flow).
+- **localStorage persistence**: saved rows and column visibility are
+  written to `localStorage` after every change. Refreshing the page keeps
+  your edits. Drafts (unsaved cells) are intentionally NOT persisted.
+- **Keyboard friendly**: every cell is focusable, Enter opens the editor,
+  Escape rolls back, Tab moves between cells.
 
 ## Project structure
 
@@ -44,20 +60,24 @@ src/
   styles.css                    All styling
   components/DataTable/
     DataTable.jsx               Main component: toolbar + virtualized body
-    TableHeader.jsx             Sticky header row
-    TableRow.jsx                One row, memoized
+    TableHeader.jsx             Sticky header row, click-to-sort
+    TableRow.jsx                One row + delete button, memoized
     EditableCell.jsx            One cell: read view + matching editor per type
     ColumnPicker.jsx            Show / hide columns toolbar
   hooks/
-    useEditableTable.js         Saved rows, drafts, visibility, editingCell
+    useEditableTable.js         Saved rows, drafts, visibility, editingCell,
+                                  add/delete row, localStorage hydration
     useVirtualRows.js           React glue around the virtualization math
   utils/
-    cellValueUtils.js           format / parse / align cell values
+    cellValueUtils.js           format / parse / align cell values (incl. date)
     columnUtils.js              sort / filter / toggle columns
     rowUtils.js                 immutable draft and row operations
     virtualRows.js              pure virtualization math (unit-tested)
+    sortUtils.js                cycleSortDirection + sortRows
+    filterUtils.js              filterRows (global search)
+    storage.js                  localStorage load / save helpers
   data/
-    mockTableData.js            Deterministic 2,500-row demo data set
+    mockTableData.js            @faker-js/faker-based demo data (seeded)
 test/
   *.test.js                     node:test unit tests for the helpers
 ```
@@ -81,18 +101,23 @@ The table accepts exactly the shape from the PDF:
 
 ### Schema extensions
 
-The PDF allows adding properties to the column schema as long as the reason is
-documented. Two were added:
+The PDF allows adding properties to the column schema as long as the reason
+is documented. Two were added:
 
-- **`options`** — only on `type: "select"` columns. It tells the editor which
-  values the user is allowed to pick. The PDF Q&A says this is up to the
-  implementer to design, so the column schema is the most natural place.
+- **`options`** — only on `type: "select"` columns. It tells the editor
+  which values the user is allowed to pick. The PDF Q&A says this is up to
+  the implementer to design, so the column schema is the most natural place.
 - **`format`** — optional hint for `type: "number"` columns. Currently
   supports `"currency"`. Without it, numbers are formatted with thousand
   separators. This lets one numeric column ("Salary") render as USD while
   another ("Tickets") renders as a plain number.
 
-No existing property was removed or changed.
+The `type` enum is also extended with `"date"`. The PDF lists
+`"string, numbers, boolean, selection list …"` with a trailing ellipsis,
+which suggests other types are welcome. `date` uses the native
+`<input type="date">` editor and an `Intl.DateTimeFormat` display.
+
+No existing property was removed or had its type changed.
 
 ## Performance choices
 
@@ -108,16 +133,22 @@ No existing property was removed or changed.
 - **CSS variable for row height**: `--row-height` is set once on the table
   wrapper and read by every `td`, so the virtualization math and the CSS
   always agree.
+- **Filter → sort → virtualize**: each stage is wrapped in `useMemo`, so a
+  pure render with no inputs changing skips all three.
 
 ## Tests
 
 `npm test` runs the helper-function unit tests with Node's built-in test
 runner (`node --test`). No extra test dependencies needed.
 
-Covered:
+Covered (45 tests total):
 
-- `cellValueUtils`: parse, format, normalizeOptions, getColumnAlignment.
+- `cellValueUtils`: parse, format, normalizeOptions, getColumnAlignment,
+  date round-trip.
 - `columnUtils`: sortColumns, getVisibleColumns, toggleColumnId.
 - `rowUtils`: updateRowCell, draft set/has/remove, applyDraftChanges,
   countDraftCells.
 - `virtualRows`: getVirtualRange across normal, empty and edge inputs.
+- `sortUtils`: cycle, asc/desc, numbers / strings / booleans / dates.
+- `filterUtils`: empty query, multi-column match, hidden columns, nulls.
+- `storage`: round-trip, fallback, bad JSON.

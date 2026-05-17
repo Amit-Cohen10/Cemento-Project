@@ -4,14 +4,15 @@ import {
   getColumnAlignment,
   normalizeOptions,
   parseCellValue,
+  toDateInputValue,
 } from "../../utils/cellValueUtils.js";
 
 /*
  * One cell of the table.
  * When the user clicks it we swap the read view for the matching editor
- * (text input, number input, select, or checkbox) based on the column type.
- * Wrapped in React.memo because there are a lot of these on screen and
- * most of them don't change between renders.
+ * (text input, number input, select, checkbox, or date picker) based on
+ * the column type. Wrapped in React.memo because there are a lot of these
+ * on screen and most of them don't change between renders.
  */
 export const EditableCell = memo(function EditableCell({
   rowId,
@@ -95,6 +96,23 @@ export const EditableCell = memo(function EditableCell({
             </option>
           ))}
         </select>
+      );
+    }
+
+    if (column.type === "date") {
+      return (
+        <input
+          autoFocus
+          className="cellInput"
+          type="date"
+          value={toDateInputValue(value)}
+          onClick={(event) => event.stopPropagation()}
+          onBlur={onStopEdit}
+          onChange={(event) =>
+            onChange(rowId, column.id, parseCellValue(column, event.target.value))
+          }
+          onKeyDown={handleEditorKeyDown}
+        />
       );
     }
 

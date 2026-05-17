@@ -18,7 +18,15 @@ export const TableRow = memo(function TableRow({
   onStopEdit,
   onCancelEdit,
   onChange,
+  onDeleteRow,
 }) {
+  const handleDeleteClick = (event) => {
+    // Stop propagation so clicking the button doesn't also start editing
+    // the cell underneath it.
+    event.stopPropagation();
+    onDeleteRow(row.id);
+  };
+
   return (
     <tr className={rowIndex % 2 === 0 ? "evenRow" : "oddRow"} style={{ height: rowHeight }}>
       {columns.map((column) => {
@@ -40,6 +48,18 @@ export const TableRow = memo(function TableRow({
           />
         );
       })}
+
+      <td className="deleteCell">
+        <button
+          type="button"
+          className="deleteRowButton"
+          onClick={handleDeleteClick}
+          aria-label={`Delete row ${row.id}`}
+          title="Delete row"
+        >
+          ×
+        </button>
+      </td>
     </tr>
   );
 });

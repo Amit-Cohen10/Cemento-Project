@@ -93,6 +93,41 @@ h1 {
   background: #fbfcfe;
 }
 
+.toolbarLeft {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.searchField {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 220px;
+}
+
+.searchLabel {
+  color: #475569;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.searchInput {
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid #d8dee8;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #1f2937;
+  outline: none;
+}
+
+.searchInput:focus {
+  border-color: #0f766e;
+  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.18);
+}
+
 .columnPicker {
   min-width: 260px;
   margin: 0;
@@ -224,6 +259,43 @@ th {
   text-align: left;
 }
 
+th.sortable {
+  cursor: pointer;
+  user-select: none;
+}
+
+th.sortable:hover {
+  background: #e6ecf3;
+}
+
+th.sorted {
+  color: #0f766e;
+}
+
+.headerLabel {
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.sortIndicator {
+  display: inline-block;
+  margin-left: 6px;
+  width: 10px;
+  color: #0f766e;
+  font-size: 0.7rem;
+  vertical-align: middle;
+}
+
+th.deleteHeader {
+  width: 56px;
+  cursor: default;
+  background: #f0f4f8;
+}
+
+th.deleteHeader:hover {
+  background: #f0f4f8;
+}
+
 td {
   position: relative;
   /* Row height is set inline from the JS DEFAULT_ROW_HEIGHT so virtualization
@@ -350,6 +422,39 @@ td {
   padding: 0;
   border: 0;
   background: transparent;
+}
+
+.deleteCell {
+  width: 56px;
+  padding: 0;
+  text-align: center;
+  background: inherit;
+}
+
+.deleteRowButton {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 1.2rem;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background 140ms ease,
+    color 140ms ease;
+}
+
+.deleteRowButton:hover {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.emptyRow td.emptyCell {
+  padding: 28px;
+  text-align: center;
+  color: #64748b;
+  background: #fbfcfe;
 }
 
 @media (max-width: 860px) {

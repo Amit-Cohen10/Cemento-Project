@@ -1,15 +1,23 @@
 /*
  * Demo data for the assignment.
- * I generate it deterministically (no faker, no Math.random) so the table
- * always looks the same on every refresh, which is much easier to demo
- * during an interview and easier to debug.
  *
- * The column set covers all four required types:
+ * The PDF Q&A suggests Faker, so I use @faker-js/faker here. I call
+ * faker.seed(42) before generating so the data is the same across refreshes,
+ * which makes it easier to demo the table and easier to debug.
+ *
+ * The column set covers all four required types plus a bonus "date" type:
  *   - string  (name, location, team)
  *   - number  (salary, ticketsClosed)
  *   - boolean (active)
  *   - select  (role, level)
+ *   - date    (joinedAt) -- bonus type, see README "Schema extensions".
  */
+
+import { faker } from "@faker-js/faker";
+
+const roleOptions = ["Frontend", "Backend", "Full Stack", "QA", "Product"];
+const levelOptions = ["Junior", "Mid", "Senior", "Lead"];
+const teamOptions = ["Platform", "Growth", "Core Product", "Operations", "Infrastructure"];
 
 export const employeeColumns = [
   {
@@ -24,8 +32,8 @@ export const employeeColumns = [
     ordinalNo: 2,
     title: "Role",
     type: "select",
-    width: 170,
-    options: ["Frontend", "Backend", "Full Stack", "QA", "Product"],
+    width: 160,
+    options: roleOptions,
   },
   {
     id: "salary",
@@ -40,22 +48,22 @@ export const employeeColumns = [
     ordinalNo: 4,
     title: "Active",
     type: "boolean",
-    width: 110,
+    width: 100,
   },
   {
     id: "location",
     ordinalNo: 5,
     title: "Location",
     type: "string",
-    width: 160,
+    width: 150,
   },
   {
     id: "level",
     ordinalNo: 6,
     title: "Level",
     type: "select",
-    width: 130,
-    options: ["Junior", "Mid", "Senior", "Lead"],
+    width: 120,
+    options: levelOptions,
   },
   {
     id: "ticketsClosed",
@@ -71,61 +79,36 @@ export const employeeColumns = [
     type: "string",
     width: 160,
   },
+  {
+    id: "joinedAt",
+    ordinalNo: 9,
+    title: "Joined",
+    type: "date",
+    width: 140,
+  },
 ];
 
-const firstNames = [
-  "Amit",
-  "Maya",
-  "Noa",
-  "Daniel",
-  "Lior",
-  "Tamar",
-  "Eyal",
-  "Dana",
-  "Roni",
-  "Shira",
-];
-
-const lastNames = [
-  "Cohen",
-  "Levi",
-  "Mizrahi",
-  "Azoulay",
-  "Biton",
-  "Friedman",
-  "Shani",
-  "Mor",
-  "Bar",
-  "Katz",
-];
-
-const locations = ["Tel Aviv", "Jerusalem", "Haifa", "Beer Sheva", "Herzliya"];
-const teams = ["Platform", "Growth", "Core Product", "Operations", "Infrastructure"];
-const roles = ["Frontend", "Backend", "Full Stack", "QA", "Product"];
-const levels = ["Junior", "Mid", "Senior", "Lead"];
-
-// Pick a value by index. The step lets me get a different cycle per column
-// so two columns don't end up perfectly correlated.
-function pickValue(values, index, step = 1) {
-  return values[(index * step) % values.length];
+// Generate a row using Faker. Seeding happens once outside this function so
+// the whole batch shares one deterministic sequence.
+function createRow(index) {
+  return {
+    id: `employee-${index + 1}`,
+    name: faker.person.fullName(),
+    role: faker.helpers.arrayElement(roleOptions),
+    salary: faker.number.int({ min: 60000, max: 200000 }),
+    active: faker.datatype.boolean(),
+    location: faker.location.city(),
+    level: faker.helpers.arrayElement(levelOptions),
+    ticketsClosed: faker.number.int({ min: 0, max: 150 }),
+    team: faker.helpers.arrayElement(teamOptions),
+    joinedAt: faker.date.past({ years: 5 }).toISOString(),
+  };
 }
 
-// Build a large but predictable data set. 2,500 rows is enough to feel the
-// difference virtualization makes, but still loads fast.
+// 2,500 rows is enough to feel the difference virtualization makes but still
+// loads quickly. Faker also lets the caller request a different size if they
+// want to stress test the table.
 export function createEmployeeRows(count = 2500) {
-  return Array.from({ length: count }, (_, index) => {
-    const rowNumber = index + 1;
-
-    return {
-      id: `employee-${rowNumber}`,
-      name: `${pickValue(firstNames, index)} ${pickValue(lastNames, index, 3)}`,
-      role: pickValue(roles, index, 2),
-      salary: 65000 + ((index * 1375) % 70000),
-      active: index % 5 !== 0,
-      location: pickValue(locations, index, 4),
-      level: pickValue(levels, index, 3),
-      ticketsClosed: 8 + ((index * 7) % 140),
-      team: pickValue(teams, index, 2),
-    };
-  });
+  faker.seed(42);
+  return Array.from({ length: count }, (_, index) => createRow(index));
 }

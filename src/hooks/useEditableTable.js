@@ -8,29 +8,39 @@ import {
   removeDraftCell,
   setDraftCell,
 } from "../utils/rowUtils.js";
+import { loadFromStorage, saveToStorage } from "../utils/storage.js";
+
+const STORAGE_KEY_ROWS = "data";
+const STORAGE_KEY_COLUMNS = "columns";
 
 /*
  * Keeps all the table state in one place: saved rows, draft (unsaved) cells,
  * which columns are visible, and which cell is currently being edited.
  * I put it in a custom hook so DataTable.jsx stays focused on the UI.
+ *
+ * Saved rows and visible columns are persisted to localStorage, so a browser
+ * refresh keeps the user's changes. Drafts are intentionally NOT persisted --
+ * they are unsaved by definition.
  */
 export function useEditableTable(initialRows, initialColumnIds) {
-  const [rows, setRows] = useState(() => initialRows);
+  // Hydrate from localStorage first so refreshing the page keeps saved edits.
+  const [rows, setRows] = useState(() =>
+    loadFromStorage(STORAGE_KEY_ROWS, initialRows),
+  );
   const [draftChanges, setDraftChanges] = useState({});
-  const [visibleColumnIds, setVisibleColumnIds] = useState(() => initialColumnIds);
+  const [visibleColumnIds, setVisibleColumnIds] = useState(() =>
+    loadFromStorage(STORAGE_KEY_COLUMNS, initialColumnIds),
+  );
   const [editingCell, setEditingCell] = useState(null);
 
-  // If the parent passes a new data set we reset everything, otherwise we'd
-  // be showing drafts that belong to the old rows.
+  // Whenever rows actually change (save, add, delete), mirror them to storage.
   useEffect(() => {
-    setRows(initialRows);
-    setDraftChanges({});
-    setEditingCell(null);
-  }, [initialRows]);
+    saveToStorage(STORAGE_KEY_ROWS, rows);
+  }, [rows]);
 
   useEffect(() => {
-    setVisibleColumnIds(initialColumnIds);
-  }, [initialColumnIds]);
+    saveToStorage(STORAGE_KEY_COLUMNS, visibleColumnIds);
+  }, [visibleColumnIds]);
 
   // Build a Map from rowId to row so reads are O(1).
   // Without this, every keystroke would do rows.find() which is O(n).
@@ -98,6 +108,29 @@ export function useEditableTable(initialRows, initialColumnIds) {
     setEditingCell(null);
   }, []);
 
+  // Add a new empty row at the top. The cells render "Not set" until the
+  // user clicks them and types a value.
+  const addRow = useCallback(() => {
+    const newRow = {
+      id: `row-${Date.now()}-${Math.floor(Math.random() * 1e4)}`,
+    };
+    setRows((currentRows) => [newRow, ...currentRows]);
+  }, []);
+
+  // Remove a row by id and clean up any drafts / editing state pointing at it.
+  const deleteRow = useCallback((rowId) => {
+    setRows((currentRows) => currentRows.filter((row) => row.id !== rowId));
+    setDraftChanges((currentDrafts) => {
+      if (!currentDrafts[rowId]) {
+        return currentDrafts;
+      }
+      const next = { ...currentDrafts };
+      delete next[rowId];
+      return next;
+    });
+    setEditingCell((current) => (current?.rowId === rowId ? null : current));
+  }, []);
+
   return {
     rows,
     visibleColumnIds,
@@ -113,5 +146,7 @@ export function useEditableTable(initialRows, initialColumnIds) {
     isCellDirty,
     saveChanges,
     discardChanges,
+    addRow,
+    deleteRow,
   };
 }

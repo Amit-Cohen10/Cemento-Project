@@ -11,6 +11,7 @@
     "test:unit": "node --test test/*.test.js"
   },
   "dependencies": {
+    "@faker-js/faker": "^10.4.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },

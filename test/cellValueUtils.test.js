@@ -5,6 +5,7 @@ import {
   getColumnAlignment,
   normalizeOptions,
   parseCellValue,
+  toDateInputValue,
 } from "../src/utils/cellValueUtils.js";
 
 test("parseCellValue keeps each supported type correct", () => {
@@ -76,4 +77,26 @@ test("getColumnAlignment picks a sensible default per type", () => {
   assert.equal(getColumnAlignment({ type: "boolean" }), "center");
   assert.equal(getColumnAlignment({ type: "string" }), "left");
   assert.equal(getColumnAlignment({ type: "select" }), "left");
+  assert.equal(getColumnAlignment({ type: "date" }), "left");
+});
+
+test("parseCellValue normalises date input to an ISO string and handles bad input", () => {
+  const column = { type: "date" };
+  // <input type="date"> hands us a YYYY-MM-DD string.
+  assert.equal(parseCellValue(column, "2024-03-15"), "2024-03-15T00:00:00.000Z");
+  assert.equal(parseCellValue(column, ""), null);
+  assert.equal(parseCellValue(column, "not-a-date"), null);
+});
+
+test("formatCellValue renders a date in the user's locale", () => {
+  // We use dateStyle: "medium" which on en-US looks like "Mar 15, 2024".
+  const formatted = formatCellValue({ type: "date" }, "2024-03-15T00:00:00.000Z");
+  assert.match(formatted, /2024/);
+  assert.equal(formatCellValue({ type: "date" }, null), "Not set");
+});
+
+test("toDateInputValue converts ISO to the YYYY-MM-DD format <input type=date> expects", () => {
+  assert.equal(toDateInputValue("2024-03-15T00:00:00.000Z"), "2024-03-15");
+  assert.equal(toDateInputValue(null), "");
+  assert.equal(toDateInputValue("not-a-date"), "");
 });
