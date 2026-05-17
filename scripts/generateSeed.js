@@ -5,7 +5,7 @@
  *
  * The PDF Q&A recommends Faker, so I use it here to build a realistic data
  * set without writing each row by hand. The output gets committed to git as
- * src/data/seed.json, so anyone who clones the repo sees the same demo
+ * public/seed.json, so anyone who clones the repo sees the same demo
  * data on first load.
  *
  * After the user has edited the table in the browser and clicks the
@@ -22,7 +22,7 @@ const ROW_COUNT = 2500;
 const SEED_VALUE = 42;
 
 const here = dirname(fileURLToPath(import.meta.url));
-const outputPath = resolve(here, "../src/data/seed.json");
+const outputPath = resolve(here, "../public/seed.json");
 
 const roleOptions = ["Frontend", "Backend", "Full Stack", "QA", "Product"];
 const levelOptions = ["Junior", "Mid", "Senior", "Lead"];

@@ -148,6 +148,16 @@ h1 {
   box-shadow: 0 16px 38px rgba(26, 26, 26, 0.06);
 }
 
+.tableLoadState {
+  min-height: 160px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  color: var(--text-secondary);
+  font-weight: 800;
+}
+
 .tableToolbar {
   display: flex;
   align-items: stretch;

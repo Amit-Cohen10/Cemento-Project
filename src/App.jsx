@@ -1,12 +1,37 @@
-import { useMemo } from "react";
+import { useEffect, useState } from "react";
 import { DataTable } from "./components/DataTable/DataTable.jsx";
-import { employeeColumns, createEmployeeRows } from "./data/mockTableData.js";
+import { employeeColumns } from "./data/mockTableData.js";
 
 function App() {
-  // useMemo so the rows array keeps the same reference between renders.
-  // DataTable resets its draft edits when initialData changes, so an unstable
-  // reference here would wipe the user's unsaved changes every render.
-  const rows = useMemo(() => createEmployeeRows(), []);
+  const [rows, setRows] = useState(null);
+  const [loadError, setLoadError] = useState(null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadRows() {
+      try {
+        const response = await fetch("/seed.json");
+        if (!response.ok) {
+          throw new Error(`Could not load seed data (${response.status})`);
+        }
+        const seedRows = await response.json();
+        if (isMounted) {
+          setRows(seedRows.map((row) => ({ ...row })));
+        }
+      } catch (error) {
+        if (isMounted) {
+          setLoadError(error.message);
+        }
+      }
+    }
+
+    loadRows();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   return (
     <main className="appShell">
@@ -27,7 +52,17 @@ function App() {
         </div>
       </div>
 
-      <DataTable columns={employeeColumns} initialData={rows} />
+      {loadError ? (
+        <section className="dataTableShell tableLoadState" role="alert">
+          Could not load the demo rows. {loadError}
+        </section>
+      ) : rows ? (
+        <DataTable columns={employeeColumns} initialData={rows} />
+      ) : (
+        <section className="dataTableShell tableLoadState" role="status">
+          Loading table data...
+        </section>
+      )}
     </main>
   );
 }

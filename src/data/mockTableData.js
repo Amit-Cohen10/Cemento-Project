@@ -1,16 +1,17 @@
 /*
  * Demo data for the assignment.
  *
- * The actual rows live in seed.json, which is a static file committed to
- * the repo. That way, anyone who clones the project sees exactly the data
- * I see in my own table -- including any edits I exported.
+ * The actual rows live in public/seed.json, which is a static file committed
+ * to the repo and loaded by the browser at runtime. That keeps the demo data
+ * out of the JavaScript bundle while still giving every reviewer the same
+ * starting data.
  *
  * Workflow:
- *   1. Edit the table in the browser, click "Save changes" (writes to
- *      localStorage).
+ *   1. Edit cells in the browser and click "Save changes" (writes to
+ *      localStorage). Add/delete rows are written immediately.
  *   2. Click "Export data" in the toolbar to download the current rows as
  *      a JSON file.
- *   3. Replace src/data/seed.json with that file, commit, push.
+ *   3. Replace public/seed.json with that file, commit, push.
  *   4. Anyone who runs the project after that sees the updated data.
  *
  * If I ever want fresh Faker data, I run `npm run seed:regenerate` which
@@ -23,8 +24,6 @@
  *   - select  (role, level)
  *   - date    (joinedAt) -- bonus type, see README "Schema extensions".
  */
-
-import seedRows from "./seed.json";
 
 const roleOptions = ["Frontend", "Backend", "Full Stack", "QA", "Product"];
 const levelOptions = ["Junior", "Mid", "Senior", "Lead"];
@@ -102,9 +101,3 @@ export const employeeColumns = [
     width: 140,
   },
 ];
-
-// Return a shallow copy of each row so consumers can mutate freely without
-// touching the imported module-level reference.
-export function createEmployeeRows() {
-  return seedRows.map((row) => ({ ...row }));
-}

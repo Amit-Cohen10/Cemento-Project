@@ -56,14 +56,14 @@ Everything the project needs is listed in `package.json`, so a fresh
   `min`, or `max`. Invalid cells get a red border + tooltip, the
   toolbar shows the invalid count, and Save is disabled until all
   visible cells are valid.
-- **Add row / Delete row**: "+ Add row" button creates an empty row at the
-  top; a small `×` on every row deletes it (with confirmation by way of the
-  delete-then-save-flow).
+- **Add row / Delete row**: "+ Add row" creates an empty row at the top;
+  a small `×` on every row deletes it. These row-level changes are applied
+  immediately to local state/localStorage and can be undone.
 - **localStorage persistence**: saved rows and column visibility are
   written to `localStorage` after every change. Refreshing the page keeps
   your edits. Drafts (unsaved cells) are intentionally NOT persisted.
 - **Export to JSON**: an "Export data" button in the toolbar downloads the
-  current rows as a `seed.json` file. Drop that file into `src/data/` and
+  current rows as a `seed.json` file. Drop that file into `public/` and
   commit — anyone who clones the repo will then see your exact data set.
   See "Updating the shared data" below.
 - **Keyboard friendly**: every cell is focusable, Enter opens the editor,
@@ -71,13 +71,15 @@ Everything the project needs is listed in `package.json`, so a fresh
 
 ## Updating the shared data
 
-The table loads its initial rows from `src/data/seed.json` — a static file
-committed to the repo. The flow for pushing your own data:
+The table loads its initial rows from `public/seed.json` — a static file
+committed to the repo and fetched at runtime. The flow for pushing your own data:
 
-1. Edit / add / delete rows in the browser, click **Save changes**.
+1. Edit cells in the browser and click **Save changes**. Add or delete rows
+   as needed; those row-level changes are applied immediately and remain
+   undoable.
 2. Click **Export data** in the toolbar. A `seed.json` file is downloaded.
-3. Replace `src/data/seed.json` with that file.
-4. `git add src/data/seed.json && git commit && git push`.
+3. Replace `public/seed.json` with that file.
+4. `git add public/seed.json && git commit && git push`.
 
 The next person who clones (or `git pull`s) will see your data on first
 load. They can still edit locally — their changes go to their own
@@ -90,13 +92,13 @@ npm run seed:regenerate
 ```
 
 That executes `scripts/generateSeed.js`, which writes a new
-`src/data/seed.json`.
+`public/seed.json`.
 
 ## Project structure
 
 ```
 src/
-  App.jsx                       Demo page that feeds the table its data
+  App.jsx                       Demo page that loads rows and renders the table
   main.jsx                      React entry point
   styles.css                    All styling
   components/DataTable/
@@ -121,12 +123,14 @@ src/
     storage.js                  localStorage load / save helpers
     exportUtils.js              download current rows as seed.json
   data/
-    mockTableData.js            Column schema; reads rows from seed.json
-    seed.json                   Static rows shared via git
+    mockTableData.js            Column schema for the demo table
+public/
+  cemento-logo.png              Logo used in the page header
+  seed.json                     Static rows shared via git, fetched at runtime
 scripts/
   generateSeed.js               One-off Faker-based seed generator
 test/
-  *.test.js                     node:test unit tests for the helpers (69 tests)
+  *.test.js                     node:test unit tests for the helpers (70 tests)
 ```
 
 ## Schema
@@ -188,7 +192,7 @@ No existing property was removed or had its type changed.
 `npm test` runs the helper-function unit tests with Node's built-in test
 runner (`node --test`). No extra test dependencies needed.
 
-Covered (45 tests total):
+Covered (70 tests total):
 
 - `cellValueUtils`: parse, format, normalizeOptions, getColumnAlignment,
   date round-trip.

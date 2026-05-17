@@ -1,7 +1,7 @@
 /*
  * Small helper that turns the current table rows into a downloadable JSON
  * file. The user clicks "Export data" -> a JSON file lands in their
- * Downloads folder -> they drop it into src/data/seed.json and commit.
+ * Downloads folder -> they drop it into public/seed.json and commit.
  *
  * I keep this separate from the React component so it's easy to test
  * (well, easy to test in a real test environment -- it touches the DOM,

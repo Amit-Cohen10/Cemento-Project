@@ -92,6 +92,7 @@ export const EditableCell = memo(function EditableCell({
           }
           onKeyDown={handleEditorKeyDown}
         >
+          <option value="">Choose value...</option>
           {normalizeOptions(column.options).map((option) => (
             <option key={String(option.value)} value={option.value}>
               {option.label}

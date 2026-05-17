@@ -55,6 +55,10 @@ export function parseCellValue(column, rawValue) {
   }
 
   if (column.type === "select" || column.type === "selection") {
+    if (rawValue === "" || rawValue === null || rawValue === undefined) {
+      return null;
+    }
+
     // We compare as strings because <option value> is always a string,
     // even when the original option value was a number.
     const matchingOption = normalizeOptions(column.options).find(

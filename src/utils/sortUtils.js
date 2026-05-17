@@ -30,17 +30,25 @@ export function sortRows(rows, sortState, column) {
   const sign = direction === "asc" ? 1 : -1;
   const compare = compareByType(column.type);
 
-  return [...rows].sort((left, right) =>
-    sign * compare(left[columnId], right[columnId]),
-  );
+  return [...rows].sort((left, right) => {
+    const leftValue = left[columnId];
+    const rightValue = right[columnId];
+    const leftIsEmpty = isEmptySortValue(leftValue, column.type);
+    const rightIsEmpty = isEmptySortValue(rightValue, column.type);
+
+    if (leftIsEmpty && rightIsEmpty) return 0;
+    if (leftIsEmpty) return 1;
+    if (rightIsEmpty) return -1;
+
+    return sign * compare(leftValue, rightValue);
+  });
 }
 
 // Each column type wants a slightly different comparator. Splitting it out
 // keeps the main sort function easy to read.
 function compareByType(type) {
   if (type === "number") {
-    // Treat empty cells as -Infinity so they sink to the bottom when desc.
-    return (a, b) => (toNumber(a)) - (toNumber(b));
+    return (a, b) => Number(a) - Number(b);
   }
 
   if (type === "boolean") {
@@ -57,10 +65,18 @@ function compareByType(type) {
   return (a, b) => String(a ?? "").localeCompare(String(b ?? ""));
 }
 
-function toNumber(value) {
+function isEmptySortValue(value, type) {
   if (value === null || value === undefined || value === "") {
-    return -Infinity;
+    return true;
   }
-  const numeric = Number(value);
-  return Number.isFinite(numeric) ? numeric : -Infinity;
+
+  if (type === "number") {
+    return !Number.isFinite(Number(value));
+  }
+
+  if (type === "date") {
+    return Number.isNaN(new Date(value).getTime());
+  }
+
+  return false;
 }
