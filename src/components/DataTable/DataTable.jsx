@@ -3,7 +3,11 @@ import { useEditableTable } from "../../hooks/useEditableTable.js";
 import { useVirtualRows } from "../../hooks/useVirtualRows.js";
 import { getVisibleColumns, sortColumns } from "../../utils/columnUtils.js";
 import { exportRowsAsJson } from "../../utils/exportUtils.js";
-import { filterRows } from "../../utils/filterUtils.js";
+import {
+  DEFAULT_FILTER_OPERATOR,
+  FILTER_OPERATORS,
+  filterRows,
+} from "../../utils/filterUtils.js";
 import { cycleSortDirection, sortRows } from "../../utils/sortUtils.js";
 import { ColumnPicker } from "./ColumnPicker.jsx";
 import { TableHeader } from "./TableHeader.jsx";
@@ -52,6 +56,7 @@ export function DataTable({ columns, initialData, rowHeight = DEFAULT_ROW_HEIGHT
   } = useEditableTable(initialData, initialColumnIds);
 
   const [searchQuery, setSearchQuery] = useState("");
+  const [filterOperator, setFilterOperator] = useState(DEFAULT_FILTER_OPERATOR);
   const [sortState, setSortState] = useState(null);
 
   const visibleColumns = useMemo(
@@ -75,12 +80,16 @@ export function DataTable({ columns, initialData, rowHeight = DEFAULT_ROW_HEIGHT
     setSearchQuery(event.target.value);
   };
 
+  const handleOperatorChange = (event) => {
+    setFilterOperator(event.target.value);
+  };
+
   // Apply filter first (works on the smaller saved value, fast for 2.5k rows)
   // then sort the result. Doing it in this order means the visible row count
   // shown in the toolbar matches what's on screen.
   const filteredRows = useMemo(
-    () => filterRows(rows, searchQuery, visibleColumns),
-    [rows, searchQuery, visibleColumns],
+    () => filterRows(rows, searchQuery, visibleColumns, filterOperator),
+    [rows, searchQuery, visibleColumns, filterOperator],
   );
 
   const sortedRows = useMemo(() => {
@@ -141,16 +150,30 @@ export function DataTable({ columns, initialData, rowHeight = DEFAULT_ROW_HEIGHT
             onToggleColumn={toggleColumnVisibility}
           />
 
-          <label className="searchField">
-            <span className="searchLabel">Search</span>
-            <input
-              type="search"
-              className="searchInput"
-              placeholder="Filter rows..."
-              value={searchQuery}
-              onChange={handleSearchChange}
-            />
-          </label>
+          <div className="searchField">
+            <span className="searchLabel">Filter</span>
+            <div className="searchControls">
+              <select
+                className="filterOperator"
+                value={filterOperator}
+                onChange={handleOperatorChange}
+                aria-label="Filter operator"
+              >
+                {FILTER_OPERATORS.map((op) => (
+                  <option key={op.value} value={op.value}>
+                    {op.label}
+                  </option>
+                ))}
+              </select>
+              <input
+                type="search"
+                className="searchInput"
+                placeholder="Type a value..."
+                value={searchQuery}
+                onChange={handleSearchChange}
+              />
+            </div>
+          </div>
         </div>
 
         <div className="tableActions">
@@ -171,10 +194,16 @@ export function DataTable({ columns, initialData, rowHeight = DEFAULT_ROW_HEIGHT
           <button
             className="secondaryButton"
             type="button"
-            onClick={() => exportRowsAsJson(rows)}
-            title="Download the current rows as seed.json"
+            onClick={() => exportRowsAsJson(sortedRows)}
+            title={
+              sortedRows.length === rows.length
+                ? "Download all rows as seed.json"
+                : `Download the ${sortedRows.length.toLocaleString()} filtered rows as seed.json`
+            }
           >
-            Export data
+            {sortedRows.length === rows.length
+              ? "Export data"
+              : `Export filtered (${sortedRows.length.toLocaleString()})`}
           </button>
 
           <button
