@@ -1,8 +1,10 @@
 // Pre-built Intl formatters. I create them once at module level instead of on
 // every render because Intl.NumberFormat is surprisingly expensive to build.
-const currencyFormatter = new Intl.NumberFormat("en-US", {
-  style: "currency",
-  currency: "USD",
+//
+// For currency I format the bare number and append "$" manually instead of
+// using `style: "currency"`. Intl always puts the USD symbol on the left
+// ($1,200), but the product copy here prefers it on the right (1,200$).
+const currencyAmountFormatter = new Intl.NumberFormat("en-US", {
   maximumFractionDigits: 0,
 });
 
@@ -92,9 +94,10 @@ export function formatCellValue(column, value) {
   }
 
   if (column.type === "number") {
-    return column.format === "currency"
-      ? currencyFormatter.format(value)
-      : numberFormatter.format(value);
+    if (column.format === "currency") {
+      return `${currencyAmountFormatter.format(value)}$`;
+    }
+    return numberFormatter.format(value);
   }
 
   if (column.type === "select" || column.type === "selection") {

@@ -63,7 +63,8 @@ test("formatCellValue renders readable values", () => {
 });
 
 test("formatCellValue formats currency numbers and falls back nicely", () => {
-  assert.equal(formatCellValue({ type: "number", format: "currency" }, 1500), "$1,500");
+  // $ is intentionally placed on the right (1,500$) per the product copy.
+  assert.equal(formatCellValue({ type: "number", format: "currency" }, 1500), "1,500$");
   // Unknown select value just shows the raw value as text.
   assert.equal(
     formatCellValue({ type: "select", options: ["A", "B"] }, "Z"),
