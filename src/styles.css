@@ -360,6 +360,18 @@ h1 {
   background: var(--brand-orange-soft);
 }
 
+/* Rows the user added in this session but hasn't clicked "Save changes" on
+   yet. A green left edge tells the user "this is new and pending". */
+.evenRow.isPendingNew td,
+.oddRow.isPendingNew td {
+  background: #f0fdf4;
+}
+
+.evenRow.isPendingNew td:first-child,
+.oddRow.isPendingNew td:first-child {
+  box-shadow: inset 3px 0 0 #16a34a;
+}
+
 /* ----------------------------------------------------------------------
  * Filter panel
  * -------------------------------------------------------------------- */

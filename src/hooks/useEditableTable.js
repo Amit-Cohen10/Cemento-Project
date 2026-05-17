@@ -12,10 +12,11 @@ import {
   undo as historyUndo,
 } from "../utils/historyUtils.js";
 import {
-  applyDraftChanges,
+  commitPendingChanges,
   countDraftCells,
   getDraftCellValue,
   hasDraftCell,
+  mergePendingRows,
   removeDraftCell,
   setDraftCell,
 } from "../utils/rowUtils.js";
@@ -33,16 +34,23 @@ function identityRows(rows) {
 }
 
 /*
- * Keeps all the table state in one place: saved rows, draft (unsaved) cells,
- * which columns are visible, and which cell is currently being edited.
+ * Keeps all the table state in one place.
  *
- * Saved rows and visible columns are persisted to localStorage, so a browser
- * refresh keeps the user's changes. Drafts are intentionally NOT persisted --
- * they are unsaved by definition.
+ * The hook holds four kinds of state and merges them into one display list:
  *
- * Undo/redo history is in-memory only. I don't persist the stacks because
- * (a) they can be large, and (b) a fresh session starting "clean" is the
- * expected behaviour in most apps.
+ *   - committedRows  -> The saved data. This is what we persist to
+ *                       localStorage and what survives a refresh.
+ *   - draftChanges   -> Cell-level edits that haven't been saved yet.
+ *   - pendingNewRows -> Rows the user added but hasn't saved yet.
+ *   - pendingDeletedIds -> Saved rows the user marked for deletion but
+ *                          hasn't saved yet.
+ *
+ * The "rows" the table displays is the merge of all four. Only "Save
+ * changes" promotes the pending state into committedRows (and storage).
+ * "Cancel" drops everything pending.
+ *
+ * Undo/redo history is in-memory only and tracks just the committed
+ * snapshots, because that's the only state that crosses a refresh.
  */
 export function useEditableTable(initialRows, initialColumnIds, options = {}) {
   const {
@@ -51,10 +59,12 @@ export function useEditableTable(initialRows, initialColumnIds, options = {}) {
   } = options;
 
   // Hydrate from localStorage first so refreshing the page keeps saved edits.
-  const [rows, setRows] = useState(() =>
+  const [committedRows, setCommittedRows] = useState(() =>
     normalizeRows(loadFromStorage(STORAGE_KEY_ROWS, initialRows)),
   );
   const [draftChanges, setDraftChanges] = useState({});
+  const [pendingNewRows, setPendingNewRows] = useState([]);
+  const [pendingDeletedIds, setPendingDeletedIds] = useState(() => new Set());
   const [visibleColumnIds, setVisibleColumnIds] = useState(() =>
     reconcileVisibleColumnIds(
       loadFromStorage(STORAGE_KEY_COLUMNS, initialColumnIds),
@@ -66,15 +76,21 @@ export function useEditableTable(initialRows, initialColumnIds, options = {}) {
   // Selected row ids. A Set gives O(1) has() lookup from the row component.
   const [selectedRowIds, setSelectedRowIds] = useState(() => new Set());
 
-  // Whenever rows actually change (save, add, delete, undo, redo), mirror
-  // them to storage.
+  // Persist only the COMMITTED state. Drafts and pending row changes are
+  // by definition unsaved and shouldn't leak into the next session.
   useEffect(() => {
-    saveToStorage(STORAGE_KEY_ROWS, rows);
-  }, [rows]);
+    saveToStorage(STORAGE_KEY_ROWS, committedRows);
+  }, [committedRows]);
 
   useEffect(() => {
     saveToStorage(STORAGE_KEY_COLUMNS, visibleColumnIds);
   }, [visibleColumnIds]);
+
+  // The list the table actually renders.
+  const rows = useMemo(
+    () => mergePendingRows(committedRows, pendingNewRows, pendingDeletedIds),
+    [committedRows, pendingNewRows, pendingDeletedIds],
+  );
 
   // Build a Map from rowId to row so reads are O(1).
   // Without this, every keystroke would do rows.find() which is O(n).
@@ -86,17 +102,19 @@ export function useEditableTable(initialRows, initialColumnIds, options = {}) {
     return map;
   }, [rows]);
 
-  const draftCellCount = useMemo(() => countDraftCells(draftChanges), [draftChanges]);
-  const hasUnsavedChanges = draftCellCount > 0;
+  // Set of new row ids -- handy for showing a "new" badge in the cell UI.
+  const pendingNewRowIds = useMemo(() => {
+    const ids = new Set();
+    for (const row of pendingNewRows) {
+      ids.add(row.id);
+    }
+    return ids;
+  }, [pendingNewRows]);
 
-  // Wrapper around setRows that snapshots the previous rows into the undo
-  // stack. Used by every "user action" that modifies saved data.
-  const commitRowsWithHistory = useCallback((nextRows) => {
-    setRows((currentRows) => {
-      setHistory((h) => pushHistory(h, currentRows));
-      return typeof nextRows === "function" ? nextRows(currentRows) : nextRows;
-    });
-  }, []);
+  const draftCellCount = useMemo(() => countDraftCells(draftChanges), [draftChanges]);
+  const pendingChangesCount =
+    draftCellCount + pendingNewRows.length + pendingDeletedIds.size;
+  const hasUnsavedChanges = pendingChangesCount > 0;
 
   const toggleColumnVisibility = useCallback((columnId) => {
     setVisibleColumnIds((currentIds) => toggleColumnId(currentIds, columnId));
@@ -140,42 +158,77 @@ export function useEditableTable(initialRows, initialColumnIds, options = {}) {
     [draftChanges],
   );
 
+  // Save: collapse every pending change into committedRows + history.
+  // After this the user is back to a clean state.
   const saveChanges = useCallback(() => {
-    commitRowsWithHistory((currentRows) => applyDraftChanges(currentRows, draftChanges));
-    setDraftChanges({});
-    setEditingCell(null);
-  }, [commitRowsWithHistory, draftChanges]);
+    if (!hasUnsavedChanges) return;
 
+    setCommittedRows((current) => {
+      // Snapshot the previous committed state for undo before mutating.
+      setHistory((h) => pushHistory(h, current));
+      return commitPendingChanges(current, draftChanges, pendingNewRows, pendingDeletedIds);
+    });
+    setDraftChanges({});
+    setPendingNewRows([]);
+    setPendingDeletedIds(new Set());
+    setEditingCell(null);
+  }, [draftChanges, pendingNewRows, pendingDeletedIds, hasUnsavedChanges]);
+
+  // Cancel: throw away every pending change. Saved rows are untouched.
   const discardChanges = useCallback(() => {
     setDraftChanges({});
+    setPendingNewRows([]);
+    setPendingDeletedIds(new Set());
     setEditingCell(null);
   }, []);
 
-  // Add a new empty row at the top. The cells render "Not set" until the
-  // user clicks them and types a value.
+  // Add a new empty row. Stays in pendingNewRows until the user saves.
+  // The cells render "Not set" until clicked and edited.
   const addRow = useCallback(() => {
-    commitRowsWithHistory((currentRows) => [
-      { id: createRowId(currentRows) },
-      ...currentRows,
-    ]);
-  }, [commitRowsWithHistory, createRowId]);
+    setPendingNewRows((current) => {
+      // Pass the merged "all rows so far" to createRowId so the new id is
+      // unique vs. both committed rows and other pending new rows.
+      const baseline = mergePendingRows(committedRows, current, pendingDeletedIds);
+      const newRow = { id: createRowId(baseline) };
+      return [newRow, ...current];
+    });
+  }, [committedRows, createRowId, pendingDeletedIds]);
 
-  // Remove a row by id and clean up any drafts / editing state pointing at it.
-  const deleteRow = useCallback(
-    (rowId) => {
-      commitRowsWithHistory((currentRows) => currentRows.filter((row) => row.id !== rowId));
-      setDraftChanges((currentDrafts) => {
-        if (!currentDrafts[rowId]) {
-          return currentDrafts;
-        }
-        const next = { ...currentDrafts };
-        delete next[rowId];
+  // Delete a row. Two cases:
+  //   1) It's a pending new row -> just unstage it (it never existed in
+  //      committed state, so there's nothing to remember).
+  //   2) It's a committed row -> add to pendingDeletedIds.
+  const deleteRow = useCallback((rowId) => {
+    let removedFromPendingNew = false;
+    setPendingNewRows((current) => {
+      const next = current.filter((row) => row.id !== rowId);
+      removedFromPendingNew = next.length !== current.length;
+      return removedFromPendingNew ? next : current;
+    });
+
+    if (!removedFromPendingNew) {
+      setPendingDeletedIds((current) => {
+        if (current.has(rowId)) return current;
+        const next = new Set(current);
+        next.add(rowId);
         return next;
       });
-      setEditingCell((current) => (current?.rowId === rowId ? null : current));
-    },
-    [commitRowsWithHistory],
-  );
+    }
+
+    setDraftChanges((currentDrafts) => {
+      if (!currentDrafts[rowId]) return currentDrafts;
+      const next = { ...currentDrafts };
+      delete next[rowId];
+      return next;
+    });
+    setEditingCell((current) => (current?.rowId === rowId ? null : current));
+    setSelectedRowIds((current) => {
+      if (!current.has(rowId)) return current;
+      const next = new Set(current);
+      next.delete(rowId);
+      return next;
+    });
+  }, []);
 
   // Selection helpers.
   const toggleRowSelection = useCallback((rowId) => {
@@ -191,8 +244,7 @@ export function useEditableTable(initialRows, initialColumnIds, options = {}) {
   }, []);
 
   // Select / unselect every row in the given list (typically the filtered
-  // view from DataTable). Keeps selections on rows NOT in the list, so
-  // hiding a filter doesn't lose selections you can't currently see.
+  // view from DataTable).
   const setSelectionForVisible = useCallback((visibleRowIds, shouldSelect) => {
     setSelectedRowIds((current) => {
       const next = new Set(current);
@@ -211,13 +263,38 @@ export function useEditableTable(initialRows, initialColumnIds, options = {}) {
     setSelectedRowIds(new Set());
   }, []);
 
-  // Bulk delete every selected row. Goes through history like other
-  // destructive actions, so an accidental delete can be undone.
+  // Bulk delete: routes each selected row through the same pending-aware
+  // delete logic.
   const deleteSelectedRows = useCallback(() => {
     if (selectedRowIds.size === 0) return;
-    commitRowsWithHistory((currentRows) =>
-      currentRows.filter((row) => !selectedRowIds.has(row.id)),
-    );
+
+    const idsToRemoveFromNew = [];
+    const idsToMarkDeleted = [];
+
+    setPendingNewRows((currentNew) => {
+      const newSet = new Set(currentNew.map((row) => row.id));
+      for (const id of selectedRowIds) {
+        if (newSet.has(id)) {
+          idsToRemoveFromNew.push(id);
+        } else {
+          idsToMarkDeleted.push(id);
+        }
+      }
+      if (idsToRemoveFromNew.length === 0) return currentNew;
+      const toDrop = new Set(idsToRemoveFromNew);
+      return currentNew.filter((row) => !toDrop.has(row.id));
+    });
+
+    if (idsToMarkDeleted.length > 0) {
+      setPendingDeletedIds((current) => {
+        const next = new Set(current);
+        for (const id of idsToMarkDeleted) {
+          next.add(id);
+        }
+        return next;
+      });
+    }
+
     setDraftChanges((currentDrafts) => {
       let changed = false;
       const next = { ...currentDrafts };
@@ -233,32 +310,35 @@ export function useEditableTable(initialRows, initialColumnIds, options = {}) {
       current && selectedRowIds.has(current.rowId) ? null : current,
     );
     setSelectedRowIds(new Set());
-  }, [commitRowsWithHistory, selectedRowIds]);
+  }, [selectedRowIds]);
 
-  // Undo / redo: swap the current rows with the top of the past/future stack.
-  // We also drop unsaved drafts -- they may not make sense for the rolled-
-  // back data set.
+  // Undo / redo: walk the committedRows snapshot stack. Pending changes are
+  // dropped because they no longer make sense for the rolled-back data.
   const undo = useCallback(() => {
     setHistory((currentHistory) => {
-      const result = historyUndo(currentHistory, rows);
+      const result = historyUndo(currentHistory, committedRows);
       if (!result) return currentHistory;
-      setRows(result.value);
+      setCommittedRows(result.value);
       setDraftChanges({});
+      setPendingNewRows([]);
+      setPendingDeletedIds(new Set());
       setEditingCell(null);
       return result.history;
     });
-  }, [rows]);
+  }, [committedRows]);
 
   const redo = useCallback(() => {
     setHistory((currentHistory) => {
-      const result = historyRedo(currentHistory, rows);
+      const result = historyRedo(currentHistory, committedRows);
       if (!result) return currentHistory;
-      setRows(result.value);
+      setCommittedRows(result.value);
       setDraftChanges({});
+      setPendingNewRows([]);
+      setPendingDeletedIds(new Set());
       setEditingCell(null);
       return result.history;
     });
-  }, [rows]);
+  }, [committedRows]);
 
   const canUndo = historyCanUndo(history);
   const canRedo = historyCanRedo(history);
@@ -268,7 +348,11 @@ export function useEditableTable(initialRows, initialColumnIds, options = {}) {
     visibleColumnIds,
     editingCell,
     draftCellCount,
+    pendingNewRowCount: pendingNewRows.length,
+    pendingDeletedCount: pendingDeletedIds.size,
+    pendingChangesCount,
     hasUnsavedChanges,
+    pendingNewRowIds,
     toggleColumnVisibility,
     startEditing,
     stopEditing,

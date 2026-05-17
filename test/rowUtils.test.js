@@ -2,10 +2,12 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   applyDraftChanges,
+  commitPendingChanges,
   countDraftCells,
   getNextNumericRowId,
   getDraftCellValue,
   hasDraftCell,
+  mergePendingRows,
   normalizeRowsToUniqueNumericIds,
   removeDraftCell,
   setDraftCell,
@@ -135,4 +137,48 @@ test("getNextNumericRowId returns the next id after the highest current id", () 
     "13",
   );
   assert.equal(getNextNumericRowId([]), "1");
+});
+
+test("mergePendingRows returns the committed array unchanged when nothing is pending", () => {
+  const committed = [{ id: "1" }, { id: "2" }];
+  // Same reference: lets React.memo skip pointless re-renders downstream.
+  assert.equal(mergePendingRows(committed, [], new Set()), committed);
+});
+
+test("mergePendingRows places pending new rows on top and filters deletions out", () => {
+  const committed = [{ id: "1" }, { id: "2" }, { id: "3" }];
+  const newRows = [{ id: "tmp-1" }];
+  const deletedIds = new Set(["2"]);
+
+  const merged = mergePendingRows(committed, newRows, deletedIds);
+  assert.deepEqual(merged.map((row) => row.id), ["tmp-1", "1", "3"]);
+});
+
+test("commitPendingChanges applies deletions, additions and draft cells in order", () => {
+  const committed = [
+    { id: "1", name: "Amit", salary: 100 },
+    { id: "2", name: "Maya", salary: 95 },
+    { id: "3", name: "Noa", salary: 80 },
+  ];
+  const drafts = { "1": { salary: 130 } };
+  const newRows = [{ id: "tmp-1", name: "Lior", salary: 70 }];
+  const deletedIds = new Set(["2"]);
+
+  const result = commitPendingChanges(committed, drafts, newRows, deletedIds);
+
+  assert.deepEqual(
+    result.map((row) => ({ id: row.id, salary: row.salary })),
+    [
+      { id: "tmp-1", salary: 70 },
+      { id: "1", salary: 130 },
+      { id: "3", salary: 80 },
+    ],
+  );
+});
+
+test("commitPendingChanges with no pending changes mirrors applyDraftChanges", () => {
+  const committed = [{ id: "1", name: "Amit" }];
+  const drafts = { "1": { name: "Noa" } };
+  const result = commitPendingChanges(committed, drafts, [], new Set());
+  assert.equal(result[0].name, "Noa");
 });

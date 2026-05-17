@@ -151,3 +151,44 @@ export function countDraftCells(draftChanges) {
     0,
   );
 }
+
+// Build the visible rows list from the committed state plus any pending
+// additions / deletions. The user sees this merged view, but only the
+// committed slice is what we save to localStorage.
+//
+// Pending new rows go first so they appear at the top of the table.
+// Pending deleted ids are filtered out of the committed rows.
+export function mergePendingRows(committedRows, pendingNewRows, pendingDeletedIds) {
+  if (
+    pendingNewRows.length === 0 &&
+    (!pendingDeletedIds || pendingDeletedIds.size === 0)
+  ) {
+    return committedRows;
+  }
+
+  const visibleCommitted = pendingDeletedIds && pendingDeletedIds.size > 0
+    ? committedRows.filter((row) => !pendingDeletedIds.has(row.id))
+    : committedRows;
+
+  return [...pendingNewRows, ...visibleCommitted];
+}
+
+// Promote every pending change into the saved rows: drop deletions, prepend
+// new rows, and overlay draft cell values. Called once when the user hits
+// "Save changes".
+export function commitPendingChanges(
+  committedRows,
+  draftChanges,
+  pendingNewRows,
+  pendingDeletedIds,
+) {
+  const remaining = pendingDeletedIds && pendingDeletedIds.size > 0
+    ? committedRows.filter((row) => !pendingDeletedIds.has(row.id))
+    : committedRows;
+
+  const withNewRows = pendingNewRows.length > 0
+    ? [...pendingNewRows, ...remaining]
+    : remaining;
+
+  return applyDraftChanges(withNewRows, draftChanges);
+}

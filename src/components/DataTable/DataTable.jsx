@@ -46,6 +46,10 @@ export function DataTable({
     visibleColumnIds,
     editingCell,
     draftCellCount,
+    pendingNewRowCount,
+    pendingDeletedCount,
+    pendingChangesCount,
+    pendingNewRowIds,
     hasUnsavedChanges,
     toggleColumnVisibility,
     startEditing,
@@ -267,9 +271,14 @@ export function DataTable({
           <span className="statPill">
             {visibleColumns.length} / {sortedColumns.length} columns
           </span>
-          <span className={`statPill ${hasUnsavedChanges ? "hasChanges" : ""}`}>
-            {draftCellCount} unsaved
-          </span>
+          {hasUnsavedChanges && (
+            <span
+              className="statPill hasChanges"
+              title={`${draftCellCount} edited cell${draftCellCount === 1 ? "" : "s"}, ${pendingNewRowCount} new row${pendingNewRowCount === 1 ? "" : "s"}, ${pendingDeletedCount} deletion${pendingDeletedCount === 1 ? "" : "s"}`}
+            >
+              {pendingChangesCount} unsaved
+            </span>
+          )}
           {errorsByCell.hasAny && (
             <span className="statPill hasErrors" title="Save is disabled until all cells are valid">
               {errorsByCell.map.size} invalid
@@ -427,6 +436,7 @@ export function DataTable({
                 rowHeight={rowHeight}
                 editingCell={editingCell}
                 isSelected={selectedRowIds.has(row.id)}
+                isPendingNew={pendingNewRowIds.has(row.id)}
                 getCellValue={getCellValue}
                 isCellDirty={isCellDirty}
                 getCellError={getCellError}

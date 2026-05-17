@@ -13,6 +13,7 @@ export const TableRow = memo(function TableRow({
   rowHeight,
   editingCell,
   isSelected,
+  isPendingNew,
   getCellValue,
   isCellDirty,
   getCellError,
@@ -40,7 +41,7 @@ export const TableRow = memo(function TableRow({
 
   return (
     <tr
-      className={`${rowIndex % 2 === 0 ? "evenRow" : "oddRow"}${isSelected ? " isSelected" : ""}`}
+      className={`${rowIndex % 2 === 0 ? "evenRow" : "oddRow"}${isSelected ? " isSelected" : ""}${isPendingNew ? " isPendingNew" : ""}`}
       style={{ height: rowHeight }}
     >
       <td className="selectCell" onClick={stopClick}>
