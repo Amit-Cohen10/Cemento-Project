@@ -11,7 +11,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "node --test test/*.test.js",
-    "test:unit": "node --test test/*.test.js"
+    "test:unit": "node --test test/*.test.js",
+    "seed:regenerate": "node scripts/generateSeed.js"
   },
   "dependencies": {
     "@faker-js/faker": "^10.4.0",

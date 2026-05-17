@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useEditableTable } from "../../hooks/useEditableTable.js";
 import { useVirtualRows } from "../../hooks/useVirtualRows.js";
 import { getVisibleColumns, sortColumns } from "../../utils/columnUtils.js";
+import { exportRowsAsJson } from "../../utils/exportUtils.js";
 import { filterRows } from "../../utils/filterUtils.js";
 import { cycleSortDirection, sortRows } from "../../utils/sortUtils.js";
 import { ColumnPicker } from "./ColumnPicker.jsx";
@@ -165,6 +166,15 @@ export function DataTable({ columns, initialData, rowHeight = DEFAULT_ROW_HEIGHT
 
           <button className="secondaryButton" type="button" onClick={addRow}>
             + Add row
+          </button>
+
+          <button
+            className="secondaryButton"
+            type="button"
+            onClick={() => exportRowsAsJson(rows)}
+            title="Download the current rows as seed.json"
+          >
+            Export data
           </button>
 
           <button

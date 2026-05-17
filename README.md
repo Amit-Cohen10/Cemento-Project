@@ -47,8 +47,35 @@ Everything the project needs is listed in `package.json`, so a fresh
 - **localStorage persistence**: saved rows and column visibility are
   written to `localStorage` after every change. Refreshing the page keeps
   your edits. Drafts (unsaved cells) are intentionally NOT persisted.
+- **Export to JSON**: an "Export data" button in the toolbar downloads the
+  current rows as a `seed.json` file. Drop that file into `src/data/` and
+  commit — anyone who clones the repo will then see your exact data set.
+  See "Updating the shared data" below.
 - **Keyboard friendly**: every cell is focusable, Enter opens the editor,
   Escape rolls back, Tab moves between cells.
+
+## Updating the shared data
+
+The table loads its initial rows from `src/data/seed.json` — a static file
+committed to the repo. The flow for pushing your own data:
+
+1. Edit / add / delete rows in the browser, click **Save changes**.
+2. Click **Export data** in the toolbar. A `seed.json` file is downloaded.
+3. Replace `src/data/seed.json` with that file.
+4. `git add src/data/seed.json && git commit && git push`.
+
+The next person who clones (or `git pull`s) will see your data on first
+load. They can still edit locally — their changes go to their own
+localStorage and don't affect anyone else.
+
+If I want a fresh Faker-generated data set, I run:
+
+```bash
+npm run seed:regenerate
+```
+
+That executes `scripts/generateSeed.js`, which writes a new
+`src/data/seed.json`.
 
 ## Project structure
 
@@ -75,8 +102,12 @@ src/
     sortUtils.js                cycleSortDirection + sortRows
     filterUtils.js              filterRows (global search)
     storage.js                  localStorage load / save helpers
+    exportUtils.js              download current rows as seed.json
   data/
-    mockTableData.js            @faker-js/faker-based demo data (seeded)
+    mockTableData.js            Column schema; reads rows from seed.json
+    seed.json                   Static rows shared via git
+scripts/
+  generateSeed.js               One-off Faker-based seed generator
 test/
   *.test.js                     node:test unit tests for the helpers
 ```
