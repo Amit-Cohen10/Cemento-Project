@@ -50,6 +50,10 @@ export function DataTable({ columns, initialData, rowHeight = DEFAULT_ROW_HEIGHT
     discardChanges,
     addRow,
     deleteRow,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
   } = useEditableTable(initialData, initialColumnIds);
 
   const [sortState, setSortState] = useState(null);
@@ -92,6 +96,33 @@ export function DataTable({ columns, initialData, rowHeight = DEFAULT_ROW_HEIGHT
       setSortState(null);
     }
   }, [sortState, visibleColumnIds]);
+
+  // Keyboard shortcuts: Ctrl/Cmd+Z to undo, Ctrl/Cmd+Shift+Z to redo.
+  // I attach the listener to the document so it works wherever the focus
+  // is in the table -- but skip when the user is typing into an input
+  // so we don't hijack the browser's text-undo.
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      const isMeta = event.metaKey || event.ctrlKey;
+      if (!isMeta || event.key.toLowerCase() !== "z") return;
+
+      const target = event.target;
+      const tag = target?.tagName;
+      const isTextInput =
+        tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || target?.isContentEditable;
+      if (isTextInput) return;
+
+      event.preventDefault();
+      if (event.shiftKey) {
+        redo();
+      } else {
+        undo();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [undo, redo]);
 
   const handleToggleSort = useCallback((columnId) => {
     setSortState((current) => cycleSortDirection(current, columnId));
@@ -173,6 +204,29 @@ export function DataTable({ columns, initialData, rowHeight = DEFAULT_ROW_HEIGHT
           <span className={`statPill ${hasUnsavedChanges ? "hasChanges" : ""}`}>
             {draftCellCount} unsaved
           </span>
+
+          <div className="undoRedoGroup" role="group" aria-label="Undo and redo">
+            <button
+              type="button"
+              className="iconButton"
+              onClick={undo}
+              disabled={!canUndo}
+              title="Undo (Ctrl/Cmd+Z)"
+              aria-label="Undo"
+            >
+              ↶
+            </button>
+            <button
+              type="button"
+              className="iconButton"
+              onClick={redo}
+              disabled={!canRedo}
+              title="Redo (Ctrl/Cmd+Shift+Z)"
+              aria-label="Redo"
+            >
+              ↷
+            </button>
+          </div>
 
           <button className="secondaryButton" type="button" onClick={addRow}>
             + Add row

@@ -1,6 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toggleColumnId } from "../utils/columnUtils.js";
 import {
+  canRedo as historyCanRedo,
+  canUndo as historyCanUndo,
+  createHistory,
+  pushHistory,
+  redo as historyRedo,
+  undo as historyUndo,
+} from "../utils/historyUtils.js";
+import {
   applyDraftChanges,
   countDraftCells,
   getDraftCellValue,
@@ -16,11 +24,14 @@ const STORAGE_KEY_COLUMNS = "columns";
 /*
  * Keeps all the table state in one place: saved rows, draft (unsaved) cells,
  * which columns are visible, and which cell is currently being edited.
- * I put it in a custom hook so DataTable.jsx stays focused on the UI.
  *
  * Saved rows and visible columns are persisted to localStorage, so a browser
  * refresh keeps the user's changes. Drafts are intentionally NOT persisted --
  * they are unsaved by definition.
+ *
+ * Undo/redo history is in-memory only. I don't persist the stacks because
+ * (a) they can be large, and (b) a fresh session starting "clean" is the
+ * expected behaviour in most apps.
  */
 export function useEditableTable(initialRows, initialColumnIds) {
   // Hydrate from localStorage first so refreshing the page keeps saved edits.
@@ -32,8 +43,10 @@ export function useEditableTable(initialRows, initialColumnIds) {
     loadFromStorage(STORAGE_KEY_COLUMNS, initialColumnIds),
   );
   const [editingCell, setEditingCell] = useState(null);
+  const [history, setHistory] = useState(() => createHistory());
 
-  // Whenever rows actually change (save, add, delete), mirror them to storage.
+  // Whenever rows actually change (save, add, delete, undo, redo), mirror
+  // them to storage.
   useEffect(() => {
     saveToStorage(STORAGE_KEY_ROWS, rows);
   }, [rows]);
@@ -54,6 +67,15 @@ export function useEditableTable(initialRows, initialColumnIds) {
 
   const draftCellCount = useMemo(() => countDraftCells(draftChanges), [draftChanges]);
   const hasUnsavedChanges = draftCellCount > 0;
+
+  // Wrapper around setRows that snapshots the previous rows into the undo
+  // stack. Used by every "user action" that modifies saved data.
+  const commitRowsWithHistory = useCallback((nextRows) => {
+    setRows((currentRows) => {
+      setHistory((h) => pushHistory(h, currentRows));
+      return typeof nextRows === "function" ? nextRows(currentRows) : nextRows;
+    });
+  }, []);
 
   const toggleColumnVisibility = useCallback((columnId) => {
     setVisibleColumnIds((currentIds) => toggleColumnId(currentIds, columnId));
@@ -98,10 +120,10 @@ export function useEditableTable(initialRows, initialColumnIds) {
   );
 
   const saveChanges = useCallback(() => {
-    setRows((currentRows) => applyDraftChanges(currentRows, draftChanges));
+    commitRowsWithHistory((currentRows) => applyDraftChanges(currentRows, draftChanges));
     setDraftChanges({});
     setEditingCell(null);
-  }, [draftChanges]);
+  }, [commitRowsWithHistory, draftChanges]);
 
   const discardChanges = useCallback(() => {
     setDraftChanges({});
@@ -114,22 +136,53 @@ export function useEditableTable(initialRows, initialColumnIds) {
     const newRow = {
       id: `row-${Date.now()}-${Math.floor(Math.random() * 1e4)}`,
     };
-    setRows((currentRows) => [newRow, ...currentRows]);
-  }, []);
+    commitRowsWithHistory((currentRows) => [newRow, ...currentRows]);
+  }, [commitRowsWithHistory]);
 
   // Remove a row by id and clean up any drafts / editing state pointing at it.
-  const deleteRow = useCallback((rowId) => {
-    setRows((currentRows) => currentRows.filter((row) => row.id !== rowId));
-    setDraftChanges((currentDrafts) => {
-      if (!currentDrafts[rowId]) {
-        return currentDrafts;
-      }
-      const next = { ...currentDrafts };
-      delete next[rowId];
-      return next;
+  const deleteRow = useCallback(
+    (rowId) => {
+      commitRowsWithHistory((currentRows) => currentRows.filter((row) => row.id !== rowId));
+      setDraftChanges((currentDrafts) => {
+        if (!currentDrafts[rowId]) {
+          return currentDrafts;
+        }
+        const next = { ...currentDrafts };
+        delete next[rowId];
+        return next;
+      });
+      setEditingCell((current) => (current?.rowId === rowId ? null : current));
+    },
+    [commitRowsWithHistory],
+  );
+
+  // Undo / redo: swap the current rows with the top of the past/future stack.
+  // We also drop unsaved drafts -- they may not make sense for the rolled-
+  // back data set.
+  const undo = useCallback(() => {
+    setHistory((currentHistory) => {
+      const result = historyUndo(currentHistory, rows);
+      if (!result) return currentHistory;
+      setRows(result.value);
+      setDraftChanges({});
+      setEditingCell(null);
+      return result.history;
     });
-    setEditingCell((current) => (current?.rowId === rowId ? null : current));
-  }, []);
+  }, [rows]);
+
+  const redo = useCallback(() => {
+    setHistory((currentHistory) => {
+      const result = historyRedo(currentHistory, rows);
+      if (!result) return currentHistory;
+      setRows(result.value);
+      setDraftChanges({});
+      setEditingCell(null);
+      return result.history;
+    });
+  }, [rows]);
+
+  const canUndo = historyCanUndo(history);
+  const canRedo = historyCanRedo(history);
 
   return {
     rows,
@@ -148,5 +201,9 @@ export function useEditableTable(initialRows, initialColumnIds) {
     discardChanges,
     addRow,
     deleteRow,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
   };
 }
