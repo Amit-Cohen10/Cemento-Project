@@ -568,8 +568,13 @@ h1 {
 }
 
 .tableScroll {
-  height: min(68vh, 720px);
-  min-height: 430px;
+  /* Pin the visible window to 10 rows + the sticky header. Anything past
+     row 10 is reached via the inner scrollbar, but the toolbar, filter
+     panel and selection footer all stay above the page fold on a
+     standard 1080p monitor. The --row-height variable is set on the
+     shell from DEFAULT_ROW_HEIGHT, so the math stays in sync. */
+  height: calc(var(--row-height, 52px) * 10 + 48px);
+  min-height: 360px;
   overflow: auto;
 }
 
