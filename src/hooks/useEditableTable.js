@@ -44,6 +44,8 @@ export function useEditableTable(initialRows, initialColumnIds) {
   );
   const [editingCell, setEditingCell] = useState(null);
   const [history, setHistory] = useState(() => createHistory());
+  // Selected row ids. A Set gives O(1) has() lookup from the row component.
+  const [selectedRowIds, setSelectedRowIds] = useState(() => new Set());
 
   // Whenever rows actually change (save, add, delete, undo, redo), mirror
   // them to storage.
@@ -156,6 +158,64 @@ export function useEditableTable(initialRows, initialColumnIds) {
     [commitRowsWithHistory],
   );
 
+  // Selection helpers.
+  const toggleRowSelection = useCallback((rowId) => {
+    setSelectedRowIds((current) => {
+      const next = new Set(current);
+      if (next.has(rowId)) {
+        next.delete(rowId);
+      } else {
+        next.add(rowId);
+      }
+      return next;
+    });
+  }, []);
+
+  // Select / unselect every row in the given list (typically the filtered
+  // view from DataTable). Keeps selections on rows NOT in the list, so
+  // hiding a filter doesn't lose selections you can't currently see.
+  const setSelectionForVisible = useCallback((visibleRowIds, shouldSelect) => {
+    setSelectedRowIds((current) => {
+      const next = new Set(current);
+      visibleRowIds.forEach((id) => {
+        if (shouldSelect) {
+          next.add(id);
+        } else {
+          next.delete(id);
+        }
+      });
+      return next;
+    });
+  }, []);
+
+  const clearSelection = useCallback(() => {
+    setSelectedRowIds(new Set());
+  }, []);
+
+  // Bulk delete every selected row. Goes through history like other
+  // destructive actions, so an accidental delete can be undone.
+  const deleteSelectedRows = useCallback(() => {
+    if (selectedRowIds.size === 0) return;
+    commitRowsWithHistory((currentRows) =>
+      currentRows.filter((row) => !selectedRowIds.has(row.id)),
+    );
+    setDraftChanges((currentDrafts) => {
+      let changed = false;
+      const next = { ...currentDrafts };
+      for (const id of selectedRowIds) {
+        if (next[id]) {
+          delete next[id];
+          changed = true;
+        }
+      }
+      return changed ? next : currentDrafts;
+    });
+    setEditingCell((current) =>
+      current && selectedRowIds.has(current.rowId) ? null : current,
+    );
+    setSelectedRowIds(new Set());
+  }, [commitRowsWithHistory, selectedRowIds]);
+
   // Undo / redo: swap the current rows with the top of the past/future stack.
   // We also drop unsaved drafts -- they may not make sense for the rolled-
   // back data set.
@@ -205,5 +265,10 @@ export function useEditableTable(initialRows, initialColumnIds) {
     redo,
     canUndo,
     canRedo,
+    selectedRowIds,
+    toggleRowSelection,
+    setSelectionForVisible,
+    clearSelection,
+    deleteSelectedRows,
   };
 }

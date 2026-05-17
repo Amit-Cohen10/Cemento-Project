@@ -13,6 +13,7 @@ import { TableRow } from "./TableRow.jsx";
 const DEFAULT_ROW_HEIGHT = 52;
 const DEFAULT_COLUMN_WIDTH = 150;
 const DELETE_COLUMN_WIDTH = 56;
+const SELECT_COLUMN_WIDTH = 44;
 
 /*
  * Generic table component.
@@ -54,6 +55,11 @@ export function DataTable({ columns, initialData, rowHeight = DEFAULT_ROW_HEIGHT
     redo,
     canUndo,
     canRedo,
+    selectedRowIds,
+    toggleRowSelection,
+    setSelectionForVisible,
+    clearSelection,
+    deleteSelectedRows,
   } = useEditableTable(initialData, initialColumnIds);
 
   const [sortState, setSortState] = useState(null);
@@ -147,9 +153,37 @@ export function DataTable({ columns, initialData, rowHeight = DEFAULT_ROW_HEIGHT
     () =>
       visibleColumns.reduce(
         (totalWidth, column) => totalWidth + (column.width ?? DEFAULT_COLUMN_WIDTH),
-        DELETE_COLUMN_WIDTH,
+        DELETE_COLUMN_WIDTH + SELECT_COLUMN_WIDTH,
       ),
     [visibleColumns],
+  );
+
+  // Selection summary across the currently visible (filtered+sorted) rows.
+  // The header checkbox uses "all" / "some" / "none" to know whether to
+  // show as checked, indeterminate, or empty.
+  const visibleSelectionInfo = useMemo(() => {
+    const visibleIds = sortedRows.map((row) => row.id);
+    if (visibleIds.length === 0) {
+      return { state: "none", visibleSelectedCount: 0, visibleIds };
+    }
+    let visibleSelectedCount = 0;
+    for (const id of visibleIds) {
+      if (selectedRowIds.has(id)) visibleSelectedCount += 1;
+    }
+    let state = "none";
+    if (visibleSelectedCount === visibleIds.length) {
+      state = "all";
+    } else if (visibleSelectedCount > 0) {
+      state = "some";
+    }
+    return { state, visibleSelectedCount, visibleIds };
+  }, [sortedRows, selectedRowIds]);
+
+  const handleToggleSelectAll = useCallback(
+    (shouldSelect) => {
+      setSelectionForVisible(visibleSelectionInfo.visibleIds, shouldSelect);
+    },
+    [setSelectionForVisible, visibleSelectionInfo.visibleIds],
   );
 
   const virtualRows = useVirtualRows({
@@ -177,7 +211,8 @@ export function DataTable({ columns, initialData, rowHeight = DEFAULT_ROW_HEIGHT
   // one number. If we ever change DEFAULT_ROW_HEIGHT, both stay in sync.
   const tableStyle = { "--row-height": `${rowHeight}px` };
 
-  const totalColumnsForSpacer = visibleColumns.length + 1; // +1 for delete col
+  // +1 for the select column on the left, +1 for the delete column on the right.
+  const totalColumnsForSpacer = visibleColumns.length + 2;
 
   return (
     <section
@@ -232,6 +267,17 @@ export function DataTable({ columns, initialData, rowHeight = DEFAULT_ROW_HEIGHT
             + Add row
           </button>
 
+          {selectedRowIds.size > 0 && (
+            <button
+              type="button"
+              className="dangerButton"
+              onClick={deleteSelectedRows}
+              title={`Delete the ${selectedRowIds.size} selected rows`}
+            >
+              Delete selected ({selectedRowIds.size})
+            </button>
+          )}
+
           <button
             className="secondaryButton"
             type="button"
@@ -284,6 +330,7 @@ export function DataTable({ columns, initialData, rowHeight = DEFAULT_ROW_HEIGHT
       <div className="tableScroll" ref={scrollRef}>
         <table className="dataTable" style={{ minWidth: tableWidth }}>
           <colgroup>
+            <col style={{ width: SELECT_COLUMN_WIDTH }} />
             {visibleColumns.map((column) => (
               <col key={column.id} style={{ width: column.width ?? DEFAULT_COLUMN_WIDTH }} />
             ))}
@@ -295,6 +342,8 @@ export function DataTable({ columns, initialData, rowHeight = DEFAULT_ROW_HEIGHT
             sortState={sortState}
             onToggleSort={handleToggleSort}
             showDeleteColumn
+            selectionState={visibleSelectionInfo.state}
+            onToggleSelectAll={handleToggleSelectAll}
           />
 
           <tbody>
@@ -314,6 +363,7 @@ export function DataTable({ columns, initialData, rowHeight = DEFAULT_ROW_HEIGHT
                 columns={visibleColumns}
                 rowHeight={rowHeight}
                 editingCell={editingCell}
+                isSelected={selectedRowIds.has(row.id)}
                 getCellValue={getCellValue}
                 isCellDirty={isCellDirty}
                 onStartEdit={startEditing}
@@ -321,6 +371,7 @@ export function DataTable({ columns, initialData, rowHeight = DEFAULT_ROW_HEIGHT
                 onCancelEdit={cancelCellEdit}
                 onChange={updateDraftCell}
                 onDeleteRow={deleteRow}
+                onToggleSelect={toggleRowSelection}
               />
             ))}
 

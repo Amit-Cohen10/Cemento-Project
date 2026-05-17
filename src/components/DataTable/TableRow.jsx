@@ -12,6 +12,7 @@ export const TableRow = memo(function TableRow({
   columns,
   rowHeight,
   editingCell,
+  isSelected,
   getCellValue,
   isCellDirty,
   onStartEdit,
@@ -19,6 +20,7 @@ export const TableRow = memo(function TableRow({
   onCancelEdit,
   onChange,
   onDeleteRow,
+  onToggleSelect,
 }) {
   const handleDeleteClick = (event) => {
     // Stop propagation so clicking the button doesn't also start editing
@@ -27,8 +29,29 @@ export const TableRow = memo(function TableRow({
     onDeleteRow(row.id);
   };
 
+  const handleCheckboxChange = (event) => {
+    event.stopPropagation();
+    onToggleSelect(row.id);
+  };
+
+  // Prevent the click from bubbling up to neighbour cells.
+  const stopClick = (event) => event.stopPropagation();
+
   return (
-    <tr className={rowIndex % 2 === 0 ? "evenRow" : "oddRow"} style={{ height: rowHeight }}>
+    <tr
+      className={`${rowIndex % 2 === 0 ? "evenRow" : "oddRow"}${isSelected ? " isSelected" : ""}`}
+      style={{ height: rowHeight }}
+    >
+      <td className="selectCell" onClick={stopClick}>
+        <input
+          type="checkbox"
+          className="rowCheckbox"
+          checked={isSelected}
+          onChange={handleCheckboxChange}
+          aria-label={`Select row ${row.id}`}
+        />
+      </td>
+
       {columns.map((column) => {
         const isEditing =
           editingCell?.rowId === row.id && editingCell?.columnId === column.id;
