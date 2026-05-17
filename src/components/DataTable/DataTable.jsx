@@ -297,6 +297,28 @@ export function DataTable({ columns, initialData, rowHeight = DEFAULT_ROW_HEIGHT
             + Add row
           </button>
 
+          {sortedRows.length > 0 && (
+            visibleSelectionInfo.state === "all" ? (
+              <button
+                type="button"
+                className="secondaryButton"
+                onClick={clearSelection}
+                title="Unselect every row"
+              >
+                Clear selection
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="secondaryButton"
+                onClick={() => handleToggleSelectAll(true)}
+                title="Select every row in the current filtered view"
+              >
+                Select all ({sortedRows.length.toLocaleString()})
+              </button>
+            )
+          )}
+
           {selectedRowIds.size > 0 && (
             <button
               type="button"
