@@ -10,27 +10,17 @@ You need Node.js 18 or newer (npm ships with it). If you don't have it:
 - **macOS**: `brew install node`
 - **Windows / Linux**: install from <https://nodejs.org/en/download>
 
-### Quick start
-
-From the project root, run one of these:
+From the project root:
 
 ```bash
-./setup.sh           # checks Node version, installs everything, prints next steps
-# or, the npm equivalent:
-npm install
+npm install   # install dependencies (run once after cloning)
+npm run dev   # start the Vite dev server (opens at http://localhost:5173)
+npm test      # run the unit tests
+npm run build # production build into ./dist
 ```
 
-Then start the app:
-
-```bash
-npm run dev          # start the Vite dev server (opens at http://localhost:5173)
-npm test             # run the 45 unit tests
-npm run build        # production build into ./dist
-```
-
-That's the whole setup. Everything the project needs is listed in
-`package.json`, so a fresh `git clone` (or unzip) followed by `./setup.sh`
-gives a working app.
+Everything the project needs is listed in `package.json`, so a fresh
+`git clone` (or unzip) followed by `npm install` gives a working app.
 
 ## What the table does
 
