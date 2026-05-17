@@ -45,6 +45,17 @@ Everything the project needs is listed in `package.json`, so a fresh
   greater/less than, dates get before/after, booleans get yes/no, strings
   get contains/equals/starts-with/ends-with) and a value. Filters combine
   with AND. There's also an "Any column" option for global text matching.
+- **Multi-row selection + bulk delete**: a checkbox column on the left
+  plus a master checkbox in the header (with proper indeterminate state).
+  A "Delete selected (N)" button appears when something is selected.
+- **Undo / Redo**: every Save / Add / Delete is pushed onto a 50-entry
+  history stack. Buttons in the toolbar plus Ctrl/Cmd+Z and
+  Ctrl/Cmd+Shift+Z keyboard shortcuts (ignored while typing in inputs so
+  the browser's text undo still works).
+- **Schema-driven validation**: a column can declare `required: true`,
+  `min`, or `max`. Invalid cells get a red border + tooltip, the
+  toolbar shows the invalid count, and Save is disabled until all
+  visible cells are valid.
 - **Add row / Delete row**: "+ Add row" button creates an empty row at the
   top; a small `×` on every row deletes it (with confirmation by way of the
   delete-then-save-flow).
@@ -104,7 +115,9 @@ src/
     rowUtils.js                 immutable draft and row operations
     virtualRows.js              pure virtualization math (unit-tested)
     sortUtils.js                cycleSortDirection + sortRows
-    filterUtils.js              filterRows (global search)
+    filterUtils.js              per-column filter logic + operators
+    historyUtils.js             past/future stacks for undo/redo
+    validationUtils.js          schema-based cell validation
     storage.js                  localStorage load / save helpers
     exportUtils.js              download current rows as seed.json
   data/
@@ -113,7 +126,7 @@ src/
 scripts/
   generateSeed.js               One-off Faker-based seed generator
 test/
-  *.test.js                     node:test unit tests for the helpers
+  *.test.js                     node:test unit tests for the helpers (69 tests)
 ```
 
 ## Schema
