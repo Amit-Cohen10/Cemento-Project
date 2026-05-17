@@ -35,6 +35,7 @@ export const employeeColumns = [
     ordinalNo: 0,
     title: "ID",
     type: "string",
+    sortType: "number",
     width: 130,
     readOnly: true,
   },

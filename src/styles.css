@@ -527,9 +527,12 @@ th.sorted {
 }
 
 th.deleteHeader {
+  right: 0;
+  z-index: 4;
   width: 56px;
   cursor: default;
   background: var(--brand-black);
+  box-shadow: -8px 0 14px rgba(26, 26, 26, 0.12);
 }
 
 th.deleteHeader:hover {
@@ -721,10 +724,14 @@ td {
 }
 
 .deleteCell {
+  position: sticky;
+  right: 0;
+  z-index: 1;
   width: 56px;
   padding: 0;
   text-align: center;
   background: inherit;
+  box-shadow: -8px 0 14px rgba(26, 26, 26, 0.06);
 }
 
 .deleteRowButton {

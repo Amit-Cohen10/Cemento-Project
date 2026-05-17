@@ -131,7 +131,7 @@ public/
 scripts/
   generateSeed.js               One-off Faker-based seed generator
 test/
-  *.test.js                     node:test unit tests for the helpers (75 tests)
+  *.test.js                     node:test unit tests for the helpers (76 tests)
 ```
 
 ## Schema
@@ -158,7 +158,7 @@ Existing older ids such as `"employee-42"` are normalized locally to `"42"`.
 ### Schema extensions
 
 The PDF allows adding properties to the column schema as long as the reason
-is documented. Three were added:
+is documented. Four were added:
 
 - **`options`** — only on `type: "select"` columns. It tells the editor
   which values the user is allowed to pick. The PDF Q&A says this is up to
@@ -167,6 +167,10 @@ is documented. Three were added:
   supports `"currency"`. Without it, numbers are formatted with thousand
   separators. This lets one numeric column ("Salary") render as USD while
   another ("Tickets") renders as a plain number.
+- **`sortType`** — optional hint for sorting when the display/storage type
+  should stay as-is but sorting should use another comparator. The row `id`
+  stays a string to match the PDF schema, but uses `sortType: "number"` so
+  `"10"` sorts after `"2"`, not before it.
 - **`readOnly`** — optional boolean for columns that should display but not
   be edited. The demo uses this for the row `id`, because that value is also
   the row identity used for React keys, drafts, selection and history.
@@ -200,7 +204,7 @@ No existing property was removed or had its type changed.
 `npm test` runs the helper-function unit tests with Node's built-in test
 runner (`node --test`). No extra test dependencies needed.
 
-Covered (75 tests total):
+Covered (76 tests total):
 
 - `cellValueUtils`: parse, format, normalizeOptions, getColumnAlignment,
   date round-trip.

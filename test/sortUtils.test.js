@@ -40,6 +40,23 @@ test("sortRows sorts strings ascending and descending", () => {
   assert.deepEqual(desc.map((r) => r.name), ["Maya", "Daniel", "Amit"]);
 });
 
+test("sortRows can sort numeric-looking string ids as numbers", () => {
+  const rows = [
+    { id: "1" },
+    { id: "10" },
+    { id: "2" },
+    { id: "2501" },
+    { id: "100" },
+  ];
+  const column = { type: "string", sortType: "number" };
+
+  const asc = sortRows(rows, { columnId: "id", direction: "asc" }, column);
+  const desc = sortRows(rows, { columnId: "id", direction: "desc" }, column);
+
+  assert.deepEqual(asc.map((row) => row.id), ["1", "2", "10", "100", "2501"]);
+  assert.deepEqual(desc.map((row) => row.id), ["2501", "100", "10", "2", "1"]);
+});
+
 test("sortRows sorts numbers with empty cells going last (asc)", () => {
   const rows = [
     { id: "r-1", salary: 90000 },

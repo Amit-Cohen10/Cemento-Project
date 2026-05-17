@@ -28,13 +28,14 @@ export function sortRows(rows, sortState, column) {
 
   const { columnId, direction } = sortState;
   const sign = direction === "asc" ? 1 : -1;
-  const compare = compareByType(column.type);
+  const sortType = column.sortType ?? column.type;
+  const compare = compareByType(sortType);
 
   return [...rows].sort((left, right) => {
     const leftValue = left[columnId];
     const rightValue = right[columnId];
-    const leftIsEmpty = isEmptySortValue(leftValue, column.type);
-    const rightIsEmpty = isEmptySortValue(rightValue, column.type);
+    const leftIsEmpty = isEmptySortValue(leftValue, sortType);
+    const rightIsEmpty = isEmptySortValue(rightValue, sortType);
 
     if (leftIsEmpty && rightIsEmpty) return 0;
     if (leftIsEmpty) return 1;
