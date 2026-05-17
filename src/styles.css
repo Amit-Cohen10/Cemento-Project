@@ -772,6 +772,80 @@ td {
   background: var(--bg-row-alt);
 }
 
+/* ----------------------------------------------------------------------
+ * Selection summary footer ("Excel status bar")
+ * -------------------------------------------------------------------- */
+
+.selectionSummary {
+  display: flex;
+  align-items: stretch;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--border-color);
+  background: var(--brand-black);
+  color: #ffffff;
+  font-size: 0.88rem;
+}
+
+.selectionSummaryCount {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding-right: 16px;
+  border-right: 1px solid rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.selectionSummaryCount strong {
+  color: var(--brand-orange);
+}
+
+.selectionSummaryDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--brand-orange);
+}
+
+.selectionSummaryEmpty {
+  color: rgba(255, 255, 255, 0.6);
+  font-style: italic;
+}
+
+.selectionSummaryList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.selectionSummaryItem {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.selectionSummaryTitle {
+  color: var(--brand-orange);
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.selectionSummaryStat {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.selectionSummaryStat em {
+  color: #ffffff;
+  font-style: normal;
+  font-weight: 700;
+}
+
 @media (max-width: 860px) {
   .appShell {
     width: min(100vw - 20px, 1440px);

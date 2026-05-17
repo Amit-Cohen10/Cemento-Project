@@ -8,6 +8,7 @@ import { cycleSortDirection, sortRows } from "../../utils/sortUtils.js";
 import { validateCell } from "../../utils/validationUtils.js";
 import { ColumnPicker } from "./ColumnPicker.jsx";
 import { FilterPanel } from "./FilterPanel.jsx";
+import { SelectionSummary } from "./SelectionSummary.jsx";
 import { TableHeader } from "./TableHeader.jsx";
 import { TableRow } from "./TableRow.jsx";
 
@@ -465,6 +466,12 @@ export function DataTable({
           </tbody>
         </table>
       </div>
+
+      <SelectionSummary
+        rows={rows}
+        visibleColumns={visibleColumns}
+        selectedRowIds={selectedRowIds}
+      />
     </section>
   );
 }
