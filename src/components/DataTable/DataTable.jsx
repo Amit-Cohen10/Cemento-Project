@@ -5,6 +5,7 @@ import { getVisibleColumns, sortColumns } from "../../utils/columnUtils.js";
 import { exportRowsAsJson } from "../../utils/exportUtils.js";
 import { ANY_COLUMN, applyFilters } from "../../utils/filterUtils.js";
 import { cycleSortDirection, sortRows } from "../../utils/sortUtils.js";
+import { validateCell } from "../../utils/validationUtils.js";
 import { ColumnPicker } from "./ColumnPicker.jsx";
 import { FilterPanel } from "./FilterPanel.jsx";
 import { TableHeader } from "./TableHeader.jsx";
@@ -158,6 +159,30 @@ export function DataTable({ columns, initialData, rowHeight = DEFAULT_ROW_HEIGHT
     [visibleColumns],
   );
 
+  // Validation: only check the rendered (filtered+sorted) rows so we don't
+  // pay for 2,500 rows on every keystroke. The cell renderer asks for an
+  // error string via getCellError, which reads from this map.
+  const errorsByCell = useMemo(() => {
+    const map = new Map();
+    let hasAny = false;
+    for (const row of sortedRows) {
+      for (const column of visibleColumns) {
+        const value = getCellValue(row, column.id);
+        const error = validateCell(column, value);
+        if (error) {
+          map.set(`${row.id}|${column.id}`, error);
+          hasAny = true;
+        }
+      }
+    }
+    return { map, hasAny };
+  }, [sortedRows, visibleColumns, getCellValue]);
+
+  const getCellError = useCallback(
+    (row, column) => errorsByCell.map.get(`${row.id}|${column.id}`) ?? null,
+    [errorsByCell],
+  );
+
   // Selection summary across the currently visible (filtered+sorted) rows.
   // The header checkbox uses "all" / "some" / "none" to know whether to
   // show as checked, indeterminate, or empty.
@@ -239,6 +264,11 @@ export function DataTable({ columns, initialData, rowHeight = DEFAULT_ROW_HEIGHT
           <span className={`statPill ${hasUnsavedChanges ? "hasChanges" : ""}`}>
             {draftCellCount} unsaved
           </span>
+          {errorsByCell.hasAny && (
+            <span className="statPill hasErrors" title="Save is disabled until all cells are valid">
+              {errorsByCell.map.size} invalid
+            </span>
+          )}
 
           <div className="undoRedoGroup" role="group" aria-label="Undo and redo">
             <button
@@ -304,8 +334,13 @@ export function DataTable({ columns, initialData, rowHeight = DEFAULT_ROW_HEIGHT
           <button
             className="primaryButton"
             type="button"
-            disabled={!hasUnsavedChanges}
+            disabled={!hasUnsavedChanges || errorsByCell.hasAny}
             onClick={saveChanges}
+            title={
+              errorsByCell.hasAny
+                ? "Fix all invalid cells before saving"
+                : "Save your changes locally"
+            }
           >
             Save changes
           </button>
@@ -366,6 +401,7 @@ export function DataTable({ columns, initialData, rowHeight = DEFAULT_ROW_HEIGHT
                 isSelected={selectedRowIds.has(row.id)}
                 getCellValue={getCellValue}
                 isCellDirty={isCellDirty}
+                getCellError={getCellError}
                 onStartEdit={startEditing}
                 onStopEdit={stopEditing}
                 onCancelEdit={cancelCellEdit}

@@ -15,6 +15,7 @@ export const TableRow = memo(function TableRow({
   isSelected,
   getCellValue,
   isCellDirty,
+  getCellError,
   onStartEdit,
   onStopEdit,
   onCancelEdit,
@@ -64,6 +65,7 @@ export const TableRow = memo(function TableRow({
             value={getCellValue(row, column.id)}
             isEditing={isEditing}
             isDirty={isCellDirty(row.id, column.id)}
+            error={getCellError ? getCellError(row, column) : null}
             onStartEdit={onStartEdit}
             onStopEdit={onStopEdit}
             onCancelEdit={onCancelEdit}

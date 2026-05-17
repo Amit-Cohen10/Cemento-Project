@@ -20,6 +20,7 @@ export const EditableCell = memo(function EditableCell({
   value,
   isEditing,
   isDirty,
+  error,
   onStartEdit,
   onStopEdit,
   onCancelEdit,
@@ -27,6 +28,7 @@ export const EditableCell = memo(function EditableCell({
 }) {
   const alignment = getColumnAlignment(column);
   const displayValue = formatCellValue(column, value);
+  const hasError = Boolean(error);
 
   const startEditing = () => {
     onStartEdit(rowId, column.id);
@@ -150,17 +152,26 @@ export const EditableCell = memo(function EditableCell({
     return <span className="cellText">{displayValue}</span>;
   };
 
+  // The title is the standard browser tooltip, which works for free without
+  // a custom Tooltip component -- enough polish for a junior project.
+  const cellTitle = hasError ? error : undefined;
+
   return (
     <td
-      className={`editableCell align-${alignment} ${isDirty ? "isDirty" : ""}`}
+      className={`editableCell align-${alignment} ${isDirty ? "isDirty" : ""} ${
+        hasError ? "isInvalid" : ""
+      }`}
       onClick={startEditing}
       onKeyDown={handleCellKeyDown}
       tabIndex={0}
       style={{ width: column.width }}
+      title={cellTitle}
+      aria-invalid={hasError ? "true" : undefined}
     >
       {isEditing ? renderEditor() : renderValue()}
       {/* Little orange dot shows the user this cell has unsaved changes. */}
       {isDirty && <span className="dirtyMarker" title="Unsaved change" />}
+      {hasError && <span className="errorMarker" title={error}>!</span>}
     </td>
   );
 });

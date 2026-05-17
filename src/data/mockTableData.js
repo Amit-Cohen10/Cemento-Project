@@ -36,6 +36,7 @@ export const employeeColumns = [
     title: "Name",
     type: "string",
     width: 190,
+    required: true,
   },
   {
     id: "role",
@@ -44,6 +45,7 @@ export const employeeColumns = [
     type: "select",
     width: 160,
     options: roleOptions,
+    required: true,
   },
   {
     id: "salary",
@@ -52,6 +54,8 @@ export const employeeColumns = [
     type: "number",
     width: 130,
     format: "currency",
+    min: 0,
+    max: 1_000_000,
   },
   {
     id: "active",
@@ -81,6 +85,7 @@ export const employeeColumns = [
     title: "Tickets",
     type: "number",
     width: 110,
+    min: 0,
   },
   {
     id: "team",

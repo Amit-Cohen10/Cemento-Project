@@ -468,6 +468,42 @@ td {
   background: #fffaf0;
 }
 
+.editableCell.isInvalid {
+  background: #fef2f2;
+  box-shadow: inset 0 0 0 2px #fca5a5;
+}
+
+.editableCell.isInvalid.isDirty {
+  background: #fff1f0;
+}
+
+.errorMarker {
+  position: absolute;
+  top: 9px;
+  right: 9px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #dc2626;
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 800;
+  cursor: help;
+}
+
+.editableCell.isInvalid .dirtyMarker {
+  display: none;
+}
+
+.statPill.hasErrors {
+  border-color: #fca5a5;
+  background: #fef2f2;
+  color: #991b1b;
+}
+
 .cellText {
   display: block;
   overflow: hidden;
