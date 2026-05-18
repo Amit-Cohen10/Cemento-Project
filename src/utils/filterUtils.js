@@ -1,22 +1,16 @@
-/*
- * Per-column filtering for the table.
- *
- * Each filter is an object: { id, columnId, operator, value }.
- * Filters combine with AND. columnId === ANY_COLUMN ("*") means "compare
- * against every column" -- useful for global text search.
- *
- * The operators a filter can use depend on the column's type. The
- * FilterPanel reads operatorsForType() to know which options to show in
- * the dropdown, and compareCell() reads the same map (indirectly) to know
- * how to compare values.
- */
+// utility functions for filtering the table rows.
+// each filter has a columnId, an operator (contains / equals / etc.), and a value.
+// multiple filters are combined with AND — a row must pass every filter to be shown.
+// the special columnId "*" means "match against any column" (global search).
+//
+// this file is used by DataTable (to apply filters) and FilterPanel (to know which
+// operators to show for each column type).
 
-// Sentinel used by the FilterPanel "Any column" option. Reused here so the
-// panel and the matcher agree on the magic value.
+// the special value used when the user picks "Any column" in the filter panel.
 export const ANY_COLUMN = "*";
 
-// Operators available for each column type. The panel reads this map to
-// decide which operators to show in the dropdown.
+// which operators are available for each column type.
+// FilterPanel reads this to build the operator dropdown.
 const OPERATORS_BY_TYPE = {
   string: ["contains", "equals", "startsWith", "endsWith"],
   select: ["equals", "contains"],
@@ -26,7 +20,7 @@ const OPERATORS_BY_TYPE = {
   date: ["equals", "before", "after"],
 };
 
-// Human-readable labels for every operator id we use anywhere.
+// human-readable labels shown in the operator dropdown.
 export const OPERATOR_LABELS = {
   contains: "Contains",
   equals: "Equals",
@@ -38,20 +32,21 @@ export const OPERATOR_LABELS = {
   after: "After",
 };
 
+// returns the list of valid operators for a column type.
+// falls back to string operators if the type is unknown.
 export function operatorsForType(type) {
   return OPERATORS_BY_TYPE[type] ?? OPERATORS_BY_TYPE.string;
 }
 
-// Apply every filter to the rows. Returns the same array instance when
-// there are no active filters, so React.memo on downstream components
-// doesn't see a fake change.
+// run all active filters against the row array.
+// returns the same array reference when there are no filters,
+// so React.memo on downstream components does not re-render unnecessarily.
 export function applyFilters(rows, filters, columns) {
   if (!filters || filters.length === 0) {
     return rows;
   }
 
-  // Skip filters that have no value to compare against. They're empty
-  // "add filter" rows that the user hasn't filled in yet.
+  // skip filters where the user has not typed a value yet.
   const activeFilters = filters.filter(isFilterActive);
   if (activeFilters.length === 0) {
     return rows;
@@ -59,25 +54,28 @@ export function applyFilters(rows, filters, columns) {
 
   const columnById = new Map(columns.map((column) => [column.id, column]));
 
+  // a row passes only if it matches every active filter.
   return rows.filter((row) =>
     activeFilters.every((filter) => matchFilter(row, filter, columnById, columns)),
   );
 }
 
+// a filter is "active" only when the user has typed a value.
+// empty filters are shown in the UI but ignored when filtering rows.
 function isFilterActive(filter) {
   if (!filter) return false;
   if (!filter.columnId || !filter.operator) return false;
   const value = filter.value;
-  // An unset value means "no input yet" -> don't filter on it.
   if (value === "" || value === null || value === undefined) {
     return false;
   }
   return true;
 }
 
+// test one row against one filter.
 function matchFilter(row, filter, columnById, allColumns) {
   if (filter.columnId === ANY_COLUMN) {
-    // "Any column": check every column with the same operator.
+    // "Any column" mode: the row passes if any column matches.
     return allColumns.some((column) =>
       compareCell(row[column.id], filter.operator, filter.value, column.type),
     );
@@ -85,22 +83,20 @@ function matchFilter(row, filter, columnById, allColumns) {
 
   const column = columnById.get(filter.columnId);
   if (!column) {
-    // Filter targets a column that's no longer in the schema. Treat as
-    // a no-op rather than hiding every row.
+    // the filter targets a column that no longer exists — treat as a pass
+    // so we do not accidentally hide every row.
     return true;
   }
   return compareCell(row[filter.columnId], filter.operator, filter.value, column.type);
 }
 
-// One cell vs one query value. Operator-first so text operators
-// (contains/startsWith/endsWith) can work on every type by stringifying
-// the cell, while equality and comparison operators stay type-aware.
+// compare one cell value against a query value using the given operator.
 function compareCell(cellValue, operator, queryValue, type) {
-  // Text operators on any type.
+  // text operators work on any type by converting the cell value to a string.
   if (operator === "contains" || operator === "startsWith" || operator === "endsWith") {
     const cellText = String(cellValue ?? "").toLowerCase();
     const queryText = String(queryValue ?? "").toLowerCase().trim();
-    if (!queryText) return true;
+    if (!queryText) return true; // empty query matches everything
     return textMatcherFor(operator)(cellText, queryText);
   }
 
@@ -116,9 +112,7 @@ function compareCell(cellValue, operator, queryValue, type) {
 
   if (type === "boolean") {
     if (operator !== "equals") return false;
-    // Reject queryValues that aren't a real yes/no -- otherwise something
-    // like "amit" would be coerced to false and falsely match every No
-    // cell.
+    // only accept proper yes/no values so we do not accidentally match everything.
     if (
       queryValue !== true &&
       queryValue !== false &&
@@ -137,9 +131,7 @@ function compareCell(cellValue, operator, queryValue, type) {
     const queryTime = toDateTime(queryValue);
     if (cellTime === null || queryTime === null) return false;
     if (operator === "equals") {
-      // Day-level equality so picking 2024-03-15 in the date input matches
-      // any row that occurred on 2024-03-15 regardless of the time-of-day
-      // we stored.
+      // compare by day only, ignoring time-of-day.
       return toDateOnly(cellValue) === toDateOnly(queryValue);
     }
     if (operator === "before") return cellTime < queryTime;
@@ -147,7 +139,7 @@ function compareCell(cellValue, operator, queryValue, type) {
     return false;
   }
 
-  // Default: string / select equality (case insensitive).
+  // default: case-insensitive string equality.
   if (operator === "equals") {
     const cellText = String(cellValue ?? "").toLowerCase();
     const queryText = String(queryValue ?? "").toLowerCase().trim();
@@ -157,6 +149,7 @@ function compareCell(cellValue, operator, queryValue, type) {
   return false;
 }
 
+// returns the right text comparison function for the given operator.
 function textMatcherFor(operator) {
   if (operator === "startsWith") {
     return (cell, query) => cell.startsWith(query);
@@ -164,22 +157,24 @@ function textMatcherFor(operator) {
   if (operator === "endsWith") {
     return (cell, query) => cell.endsWith(query);
   }
-  // "contains" is the safe default.
-  return (cell, query) => cell.includes(query);
+  return (cell, query) => cell.includes(query); // "contains" is the default
 }
 
+// convert a value to a number, or return null if it is not a valid finite number.
 function toNumber(value) {
   if (value === null || value === undefined || value === "") return null;
   const num = Number(value);
   return Number.isFinite(num) ? num : null;
 }
 
+// convert a date string to a timestamp (milliseconds since 1970), or null if invalid.
 function toDateTime(value) {
   if (!value) return null;
   const t = new Date(value).getTime();
   return Number.isNaN(t) ? null : t;
 }
 
+// convert a date to "YYYY-MM-DD" string for day-level comparison.
 function toDateOnly(value) {
   if (!value) return "";
   const d = new Date(value);

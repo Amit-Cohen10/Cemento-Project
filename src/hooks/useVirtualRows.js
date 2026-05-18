@@ -1,13 +1,21 @@
+// this hook handles virtualization — only rendering the rows visible in the scroll window.
+// without this, a table with 2,500 rows would put all 2,500 <tr> elements in the DOM at once,
+// which would be very slow to render and scroll.
+// instead, we only render the rows that are actually visible on screen (plus a few extras above
+// and below for smooth scrolling), and replace all the others with invisible spacer rows.
+//
+// it listens to scroll events on the table's scroll container and recalculates the visible
+// window every time the user scrolls or resizes the browser.
+//
+// it talks to: DataTable (which passes it the scrollRef and row count),
+//              virtualRows.js (the pure math function that calculates which rows to render).
+
 import { useEffect, useMemo, useState } from "react";
 import { getVirtualRange } from "../utils/virtualRows.js";
 
-/*
- * React-side glue around getVirtualRange.
- * Listens to the scroll container's scrollTop and viewport height, and feeds
- * them to the pure function. I split it like this so the math is testable
- * without rendering anything.
- */
 export function useVirtualRows({ rowCount, rowHeight, scrollRef, overscan = 8 }) {
+  // we track two numbers from the DOM: how far the user has scrolled,
+  // and how tall the visible area is.
   const [metrics, setMetrics] = useState({
     scrollTop: 0,
     viewportHeight: 480,
@@ -27,20 +35,23 @@ export function useVirtualRows({ rowCount, rowHeight, scrollRef, overscan = 8 })
       });
     };
 
-    // Read once on mount so the first paint is already in the right window,
-    // then update on scroll and on window resize.
+    // read once on first mount so the initial render shows the correct rows.
     readMetrics();
-    // passive: true tells the browser we won't call preventDefault, so it can
-    // keep scrolling smooth on mobile.
+
+    // passive: true tells the browser we will not call preventDefault inside this handler.
+    // this allows the browser to keep scrolling smooth without waiting for our code to finish.
     scrollElement.addEventListener("scroll", readMetrics, { passive: true });
     window.addEventListener("resize", readMetrics);
 
+    // cleanup: remove the listeners when the component unmounts.
     return () => {
       scrollElement.removeEventListener("scroll", readMetrics);
       window.removeEventListener("resize", readMetrics);
     };
   }, [scrollRef]);
 
+  // pass the current scroll position into the pure math function and get back
+  // the list of row indexes to render, plus the top/bottom padding heights.
   return useMemo(
     () =>
       getVirtualRange({

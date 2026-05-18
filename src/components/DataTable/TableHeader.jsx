@@ -1,12 +1,14 @@
+// this component renders the sticky header row of the table.
+// it shows a column title in each cell, and clicking a title sorts by that column.
+// the leftmost cell has a master checkbox that selects or unselects every visible row at once.
+// it talks to: DataTable (which passes the columns, sort state, and selection state),
+//              cellValueUtils (to get the text alignment for each column).
+
 import { memo, useEffect, useRef } from "react";
 import { getColumnAlignment } from "../../utils/cellValueUtils.js";
 
-/*
- * Sticky header row. Clicking a column title cycles its sort direction.
- * The leftmost cell holds a master checkbox that selects / unselects every
- * row in the currently visible view. memo because the columns array only
- * changes when the user shows or hides a column.
- */
+// memo means React will skip re-rendering this component if its props did not change.
+// the header rarely changes, so this is a useful performance optimization.
 export const TableHeader = memo(function TableHeader({
   columns,
   sortState,
@@ -17,8 +19,9 @@ export const TableHeader = memo(function TableHeader({
 }) {
   const masterCheckboxRef = useRef(null);
 
-  // The HTML checkbox element has an "indeterminate" property that can't
-  // be set declaratively in JSX, so we set it via the ref every render.
+  // the "indeterminate" state (a dash instead of a tick) cannot be set with JSX attributes —
+  // it only exists as a JavaScript property on the DOM element.
+  // so we update it directly via the ref every time selectionState changes.
   useEffect(() => {
     if (masterCheckboxRef.current) {
       masterCheckboxRef.current.indeterminate = selectionState === "some";
@@ -28,6 +31,7 @@ export const TableHeader = memo(function TableHeader({
   return (
     <thead>
       <tr>
+        {/* master checkbox: checked when all rows are selected, indeterminate when some are. */}
         <th className="selectHeader" scope="col">
           <input
             ref={masterCheckboxRef}
@@ -47,6 +51,8 @@ export const TableHeader = memo(function TableHeader({
           return (
             <th
               key={column.id}
+              // align-left / align-right / align-center comes from getColumnAlignment.
+              // sorted / sort-asc / sort-desc adds the CSS highlight when this column is sorted.
               className={`align-${getColumnAlignment(column)} sortable ${
                 isSorted ? `sorted sort-${direction}` : ""
               }`}
@@ -54,6 +60,7 @@ export const TableHeader = memo(function TableHeader({
               scope="col"
               onClick={() => onToggleSort(column.id)}
               role="button"
+              // aria-sort tells screen readers the current sort direction.
               aria-sort={
                 direction === "asc"
                   ? "ascending"
@@ -63,7 +70,7 @@ export const TableHeader = memo(function TableHeader({
               }
             >
               <span className="headerLabel">{column.title}</span>
-              {/* Small arrow shows the current sort direction. */}
+              {/* small arrow that shows asc (▲) or desc (▼) when this column is sorted. */}
               <span className="sortIndicator" aria-hidden="true">
                 {direction === "asc" ? "▲" : direction === "desc" ? "▼" : ""}
               </span>
@@ -71,7 +78,7 @@ export const TableHeader = memo(function TableHeader({
           );
         })}
 
-        {/* Empty header above the delete-row buttons. */}
+        {/* empty header cell above the delete buttons column. */}
         {showDeleteColumn && <th className="deleteHeader" aria-hidden="true" />}
       </tr>
     </thead>

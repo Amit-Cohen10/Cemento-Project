@@ -1,30 +1,19 @@
-/*
- * Demo data for the assignment.
- *
- * The actual rows live in public/seed.json, which is a static file committed
- * to the repo and loaded by the browser at runtime. That keeps the demo data
- * out of the JavaScript bundle while still giving every reviewer the same
- * starting data.
- *
- * Workflow:
- *   1. Edit cells in the browser and click "Save changes" (writes to
- *      localStorage). Add/delete rows are written immediately.
- *   2. Click "Export data" in the toolbar to download the current rows as
- *      a JSON file.
- *   3. Replace public/seed.json with that file, commit, push.
- *   4. Anyone who runs the project after that sees the updated data.
- *
- * If I ever want fresh Faker data, I run `npm run seed:regenerate` which
- * uses scripts/generateSeed.js.
- *
- * The column set covers all four required types plus a bonus "date" type:
- *   - string  (id, name, location, team) -- id is numeric-looking but
- *             stays a string to match the PDF schema
- *   - number  (salary, ticketsClosed)
- *   - boolean (active)
- *   - select  (role, level)
- *   - date    (joinedAt) -- bonus type, see README "Schema extensions".
- */
+// this file defines the shape of the table — what columns exist, their types, and their rules.
+// the actual row data (the employees) lives in public/seed.json, not here.
+// this file is used by App.jsx, which passes employeeColumns to DataTable.
+//
+// each column object can have:
+//   id         - the key used to look up the value on each row object
+//   ordinalNo  - the display order (0 = leftmost)
+//   title      - the header label the user sees
+//   type       - how the cell behaves: "string", "number", "boolean", "select", or "date"
+//   width      - the default column width in pixels
+//   readOnly   - if true, the user cannot edit this cell
+//   required   - if true, the cell cannot be left empty
+//   options    - list of choices for "select" columns
+//   format     - optional display hint (e.g. "currency" formats a number with a $ sign)
+//   min / max  - allowed range for number columns
+//   sortType   - override the sort behavior (e.g. the id column looks like a number even though it is stored as a string)
 
 const roleOptions = ["Frontend", "Backend", "Full Stack", "QA", "Product"];
 const levelOptions = ["Junior", "Mid", "Senior", "Lead"];
@@ -35,9 +24,9 @@ export const employeeColumns = [
     ordinalNo: 0,
     title: "ID",
     type: "string",
-    sortType: "number",
+    sortType: "number", // sort numerically even though the value is stored as a string
     width: 130,
-    readOnly: true,
+    readOnly: true,    // the user cannot change the id
   },
   {
     id: "name",
@@ -45,13 +34,13 @@ export const employeeColumns = [
     title: "Name",
     type: "string",
     width: 190,
-    required: true,
+    required: true,    // name must not be left empty
   },
   {
     id: "role",
     ordinalNo: 2,
     title: "Role",
-    type: "select",
+    type: "select",    // renders as a dropdown with fixed choices
     width: 160,
     options: roleOptions,
     required: true,
@@ -62,7 +51,7 @@ export const employeeColumns = [
     title: "Salary",
     type: "number",
     width: 130,
-    format: "currency",
+    format: "currency", // displayed as "120,000$"
     min: 0,
     max: 1_000_000,
   },
@@ -70,7 +59,7 @@ export const employeeColumns = [
     id: "active",
     ordinalNo: 4,
     title: "Active",
-    type: "boolean",
+    type: "boolean",   // renders as a Yes/No pill
     width: 100,
   },
   {
@@ -107,7 +96,7 @@ export const employeeColumns = [
     id: "joinedAt",
     ordinalNo: 9,
     title: "Joined",
-    type: "date",
+    type: "date",      // renders as a formatted date and edits with a date picker
     width: 140,
   },
 ];

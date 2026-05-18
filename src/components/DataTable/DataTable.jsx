@@ -1,3 +1,20 @@
+// this is the main table component — the one that puts everything together.
+// it receives the column schema and the initial rows from App.jsx,
+// and it wires up all the sub-components: header, rows, filters, column picker, and the summary footer.
+//
+// the data flows through a pipeline before being rendered:
+//   all rows -> apply filters -> sort -> virtualize (only render what is visible) -> <tr> elements
+//
+// it talks to:
+//   useEditableTable  - manages all state (edits, deletes, selection, undo/redo)
+//   useVirtualRows    - figures out which rows are in the visible scroll window
+//   TableHeader       - the sticky header row with sort controls
+//   TableRow          - one row of data
+//   EditableCell      - one clickable/editable cell
+//   ColumnPicker      - the dropdown to show/hide columns
+//   FilterPanel       - the filter rows above the table
+//   SelectionSummary  - the stats footer at the bottom
+
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useEditableTable } from "../../hooks/useEditableTable.js";
 import { useVirtualRows } from "../../hooks/useVirtualRows.js";
@@ -12,19 +29,12 @@ import { SelectionSummary } from "./SelectionSummary.jsx";
 import { TableHeader } from "./TableHeader.jsx";
 import { TableRow } from "./TableRow.jsx";
 
+// default sizes used when the caller does not provide overrides.
 const DEFAULT_ROW_HEIGHT = 52;
 const DEFAULT_COLUMN_WIDTH = 150;
 const DELETE_COLUMN_WIDTH = 56;
 const SELECT_COLUMN_WIDTH = 44;
 
-/*
- * Generic table component.
- * It only knows about "columns" and "rows", not about the meaning of the data,
- * so we can drop it into any page that follows the same schema.
- *
- * Render pipeline for the body:
- *   rows -> applyFilters (panel) -> sort (header click) -> virtualize -> <tr>s
- */
 export function DataTable({
   columns,
   initialData,
@@ -32,16 +42,19 @@ export function DataTable({
   createRowId,
   normalizeRows,
 }) {
+  // scrollRef points to the scrollable <div> that wraps the table.
+  // we pass it to useVirtualRows so it can listen to scroll events.
   const scrollRef = useRef(null);
 
-  // Sort once per column-schema change. The schema is small, but doing this
-  // inside useMemo means TableRow doesn't see a new array on every render.
+  // sort the column schema by ordinalNo once. useMemo means this only
+  // runs again if the columns prop changes, not on every render.
   const sortedColumns = useMemo(() => sortColumns(columns), [columns]);
   const initialColumnIds = useMemo(
     () => sortedColumns.map((column) => column.id),
     [sortedColumns],
   );
 
+  // pull everything we need out of the central state hook.
   const {
     rows,
     visibleColumnIds,
@@ -75,12 +88,14 @@ export function DataTable({
     deleteSelectedRows,
   } = useEditableTable(initialData, initialColumnIds, { createRowId, normalizeRows });
 
+  // sortState is null when no sort is active, or { columnId, direction } when one is.
   const [sortState, setSortState] = useState(null);
-  // Per-column filters: each entry is { id, columnId, operator, value }.
-  // I keep an id on each filter so React keys stay stable even when the
-  // user reorders or deletes rows.
+
+  // each filter is { id, columnId, operator, value }.
+  // we keep a stable id on each filter so React keys stay correct when filters are removed.
   const [filters, setFilters] = useState([]);
 
+  // add a blank filter row to the panel.
   const handleAddFilter = useCallback(() => {
     const newId = `filter-${Date.now()}-${Math.floor(Math.random() * 1e4)}`;
     setFilters((current) => [
@@ -89,6 +104,7 @@ export function DataTable({
     ]);
   }, []);
 
+  // patch one filter without replacing the whole array.
   const handleUpdateFilter = useCallback((id, patch) => {
     setFilters((current) =>
       current.map((filter) => (filter.id === id ? { ...filter, ...patch } : filter)),
@@ -103,36 +119,34 @@ export function DataTable({
     setFilters([]);
   }, []);
 
-  // Column visibility presets used by the dropdown's Show all / Hide all
-  // buttons. "Hide all" keeps the first column visible so the table never
-  // collapses to zero columns -- same invariant the per-checkbox toggle
-  // enforces in columnUtils.toggleColumnId.
+  // "show all" makes every column visible.
   const handleShowAllColumns = useCallback(() => {
     replaceVisibleColumnIds(sortedColumns.map((column) => column.id));
   }, [replaceVisibleColumnIds, sortedColumns]);
 
+  // "hide all" keeps only the first column so the table never has zero columns.
   const handleHideAllColumns = useCallback(() => {
     if (sortedColumns.length === 0) return;
     replaceVisibleColumnIds([sortedColumns[0].id]);
   }, [replaceVisibleColumnIds, sortedColumns]);
 
+  // filter the schema down to only the columns the user chose to show.
   const visibleColumns = useMemo(
     () => getVisibleColumns(sortedColumns, visibleColumnIds),
     [sortedColumns, visibleColumnIds],
   );
 
-  // If the user hides the column they were sorting by, clear the sort so we
-  // don't have a sort indicator pointing at nothing.
+  // if the user hides the column they were sorting by, clear the sort
+  // so the sort arrow does not point at a column that is not on screen.
   useEffect(() => {
     if (sortState && !visibleColumnIds.includes(sortState.columnId)) {
       setSortState(null);
     }
   }, [sortState, visibleColumnIds]);
 
-  // Keyboard shortcuts: Ctrl/Cmd+Z to undo, Ctrl/Cmd+Shift+Z to redo.
-  // I attach the listener to the document so it works wherever the focus
-  // is in the table -- but skip when the user is typing into an input
-  // so we don't hijack the browser's text-undo.
+  // keyboard shortcut: Ctrl/Cmd+Z = undo, Ctrl/Cmd+Shift+Z = redo.
+  // we attach this to the document so it works no matter where the focus is,
+  // but skip it when the user is typing in an input so we do not steal the browser's own undo.
   useEffect(() => {
     const handleKeyDown = (event) => {
       const isMeta = event.metaKey || event.ctrlKey;
@@ -153,20 +167,23 @@ export function DataTable({
     };
 
     document.addEventListener("keydown", handleKeyDown);
+    // cleanup: remove the listener when the component is removed from the page.
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [undo, redo]);
 
+  // clicking a column header cycles through: unsorted -> asc -> desc -> unsorted.
   const handleToggleSort = useCallback((columnId) => {
     setSortState((current) => cycleSortDirection(current, columnId));
   }, []);
 
-  // Pipeline: per-column filters -> sort -> virtualize.
-  // Filters can target hidden columns, so we pass the full sortedColumns.
+  // step 1 of the pipeline: run the active filters against every row.
+  // filters can target columns that are currently hidden, so we use sortedColumns (all of them).
   const filteredRows = useMemo(
     () => applyFilters(rows, filters, sortedColumns),
     [rows, filters, sortedColumns],
   );
 
+  // step 2: sort the filtered rows if a sort is active.
   const sortedRows = useMemo(() => {
     if (!sortState) {
       return filteredRows;
@@ -175,6 +192,9 @@ export function DataTable({
     return sortRows(filteredRows, sortState, sortColumn);
   }, [filteredRows, sortState, visibleColumns]);
 
+  // the minimum pixel width of the table — the sum of all visible column widths
+  // plus the fixed select and delete columns. used so horizontal scroll still works
+  // when many columns are visible at once.
   const tableWidth = useMemo(
     () =>
       visibleColumns.reduce(
@@ -184,9 +204,9 @@ export function DataTable({
     [visibleColumns],
   );
 
-  // Validation: only check the rendered (filtered+sorted) rows so we don't
-  // pay for 2,500 rows on every keystroke. The cell renderer asks for an
-  // error string via getCellError, which reads from this map.
+  // validate every visible cell. we only check the rows currently on screen
+  // (after filter + sort) so editing 2,500 rows does not block on every keystroke.
+  // errors are stored in a Map with the key "rowId|columnId" -> error string.
   const errorsByCell = useMemo(() => {
     const map = new Map();
     let hasAny = false;
@@ -203,14 +223,14 @@ export function DataTable({
     return { map, hasAny };
   }, [sortedRows, visibleColumns, getCellValue]);
 
+  // convenience wrapper so a cell component can ask "do I have an error?" by row + column.
   const getCellError = useCallback(
     (row, column) => errorsByCell.map.get(`${row.id}|${column.id}`) ?? null,
     [errorsByCell],
   );
 
-  // Selection summary across the currently visible (filtered+sorted) rows.
-  // The header checkbox uses "all" / "some" / "none" to know whether to
-  // show as checked, indeterminate, or empty.
+  // count how many visible rows are selected to drive the header checkbox state.
+  // state is "all", "some", or "none".
   const visibleSelectionInfo = useMemo(() => {
     const visibleIds = sortedRows.map((row) => row.id);
     if (visibleIds.length === 0) {
@@ -229,6 +249,7 @@ export function DataTable({
     return { state, visibleSelectedCount, visibleIds };
   }, [sortedRows, selectedRowIds]);
 
+  // called when the user clicks the master checkbox in the header.
   const handleToggleSelectAll = useCallback(
     (shouldSelect) => {
       setSelectionForVisible(visibleSelectionInfo.visibleIds, shouldSelect);
@@ -236,6 +257,9 @@ export function DataTable({
     [setSelectionForVisible, visibleSelectionInfo.visibleIds],
   );
 
+  // step 3: virtualization — only render the rows that are inside the visible scroll window.
+  // overscan=10 means we also render 10 rows above and below the visible area
+  // so fast scrolling does not show blank space for a frame.
   const virtualRows = useVirtualRows({
     rowCount: sortedRows.length,
     rowHeight,
@@ -243,9 +267,9 @@ export function DataTable({
     overscan: 10,
   });
 
-  // Map the virtual indexes to actual row objects.
-  // The filter protects against indexes that briefly fall outside the data,
-  // for example right after the rows array shrinks (delete row).
+  // turn the virtual indexes into actual row objects.
+  // the filter guards against an index that briefly falls outside the array,
+  // which can happen for one frame right after a row is deleted.
   const renderedRows = useMemo(
     () =>
       virtualRows.indexes
@@ -257,11 +281,11 @@ export function DataTable({
     [sortedRows, virtualRows.indexes],
   );
 
-  // Expose the row height to CSS as well so the stylesheet and the JS share
-  // one number. If we ever change DEFAULT_ROW_HEIGHT, both stay in sync.
+  // share the row height with CSS as a variable so the stylesheet and the JS always agree.
   const tableStyle = { "--row-height": `${rowHeight}px` };
 
-  // +1 for the select column on the left, +1 for the delete column on the right.
+  // +1 for the select column, +1 for the delete column.
+  // used by the spacer rows so they span the full width of the table.
   const totalColumnsForSpacer = visibleColumns.length + 2;
 
   return (
@@ -282,12 +306,15 @@ export function DataTable({
         </div>
 
         <div className="tableActions">
+          {/* small pill showing how many rows passed the filters vs the total. */}
           <span className="statPill">
             {sortedRows.length.toLocaleString()} / {rows.length.toLocaleString()} rows
           </span>
           <span className="statPill">
             {visibleColumns.length} / {sortedColumns.length} columns
           </span>
+
+          {/* only show the "unsaved" pill when there is something pending. */}
           {hasUnsavedChanges && (
             <span
               className="statPill hasChanges"
@@ -329,6 +356,7 @@ export function DataTable({
             + Add row
           </button>
 
+          {/* toggle between "select all" and "clear selection" depending on what is already selected. */}
           {sortedRows.length > 0 && (
             visibleSelectionInfo.state === "all" ? (
               <button
@@ -351,6 +379,7 @@ export function DataTable({
             )
           )}
 
+          {/* only show the delete button when at least one row is selected. */}
           {selectedRowIds.size > 0 && (
             <button
               type="button"
@@ -377,6 +406,7 @@ export function DataTable({
               : `Export filtered (${sortedRows.length.toLocaleString()})`}
           </button>
 
+          {/* cancel discards all unsaved changes. save writes them to localStorage. */}
           <button
             className="secondaryButton"
             type="button"
@@ -417,7 +447,13 @@ export function DataTable({
       </div>
 
       <div className="tableScroll" ref={scrollRef}>
+        {/* width: max(...) means the table fills 100% of the container,
+            but never shrinks below its natural pixel width.
+            this way horizontal scroll still appears when many columns are shown. */}
         <table className="dataTable" style={{ width: `max(${tableWidth}px, 100%)` }}>
+          {/* <colgroup> tells the browser the width of each column.
+              the select and delete columns have a fixed pixel width.
+              data columns share the remaining space proportionally using calc(). */}
           <colgroup>
             <col style={{ width: SELECT_COLUMN_WIDTH }} />
             {visibleColumns.map((column) => (
@@ -441,8 +477,8 @@ export function DataTable({
           />
 
           <tbody>
-            {/* Spacer rows replace the rows we skipped, so the scrollbar
-                stays the right size and the scroll position feels normal. */}
+            {/* the spacer rows are invisible. they take up the vertical space of all
+                the rows we are NOT rendering, so the scrollbar stays the correct size. */}
             {virtualRows.paddingTop > 0 && (
               <tr className="spacerRow" style={{ height: virtualRows.paddingTop }}>
                 <td className="spacerCell" colSpan={totalColumnsForSpacer} />
@@ -471,6 +507,7 @@ export function DataTable({
               />
             ))}
 
+            {/* shown when all rows have been filtered out. */}
             {sortedRows.length === 0 && (
               <tr className="emptyRow">
                 <td colSpan={totalColumnsForSpacer} className="emptyCell">
@@ -479,6 +516,7 @@ export function DataTable({
               </tr>
             )}
 
+            {/* bottom spacer, same idea as the top one. */}
             {virtualRows.paddingBottom > 0 && (
               <tr className="spacerRow" style={{ height: virtualRows.paddingBottom }}>
                 <td className="spacerCell" colSpan={totalColumnsForSpacer} />

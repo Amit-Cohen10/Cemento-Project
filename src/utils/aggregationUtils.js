@@ -1,15 +1,12 @@
-/*
- * Aggregations over a set of selected rows -- the "Excel status bar" data.
- *
- * Each numeric column gives us count / sum / avg / min / max. I keep it
- * to those five because that's what users actually want and read; more
- * stats would crowd the footer.
- *
- * The function is pure so it can be unit-tested without React and reused
- * if I ever surface the same stats elsewhere (toolbar, export, etc.).
- */
+// calculates summary statistics for a numeric column across a set of rows.
+// returns count, sum, average, min, and max.
+// returns null if the column has no numeric values at all.
+//
+// this is a pure function (no React, no side effects) so it is easy to test.
+// used by SelectionSummary to power the stats bar at the bottom of the table.
 
 export function aggregateColumn(rows, columnId) {
+  // collect only valid finite numbers — skip nulls, strings, NaN, etc.
   const numericValues = [];
   for (const row of rows) {
     const value = row[columnId];
@@ -18,11 +15,13 @@ export function aggregateColumn(rows, columnId) {
     }
   }
 
+  // nothing to aggregate.
   if (numericValues.length === 0) {
     return null;
   }
 
-  // One pass for sum/min/max so we don't walk the array three times.
+  // compute sum, min, and max in a single pass through the array
+  // instead of calling reduce three separate times.
   let sum = 0;
   let min = numericValues[0];
   let max = numericValues[0];

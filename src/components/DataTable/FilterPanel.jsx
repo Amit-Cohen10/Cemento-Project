@@ -1,3 +1,11 @@
+// this component renders the filter section above the table.
+// the user can add as many filter rows as they want.
+// each filter row has three controls: which column, which operator (contains / equals / etc.), and what value.
+// all active filters are combined with AND — a row must match every filter to be shown.
+// it talks to: DataTable (which manages the filter list and passes it down),
+//              filterUtils (for the list of operators per column type),
+//              cellValueUtils (to build the value input for select and date columns).
+
 import { memo, useMemo } from "react";
 import { normalizeOptions, toDateInputValue } from "../../utils/cellValueUtils.js";
 import {
@@ -6,17 +14,6 @@ import {
   operatorsForType,
 } from "../../utils/filterUtils.js";
 
-/*
- * Per-column filter panel.
- *
- * Each filter row has three controls:
- *   - Column (or "Any column" for a global match)
- *   - Operator (the dropdown changes based on the column's type)
- *   - Value (the input changes based on the column's type)
- *
- * Filters combine with AND. The user clicks "+ Add filter" to add a row
- * and the small "×" to remove one.
- */
 export const FilterPanel = memo(function FilterPanel({
   columns,
   filters,
@@ -25,7 +22,7 @@ export const FilterPanel = memo(function FilterPanel({
   onRemoveFilter,
   onClearFilters,
 }) {
-  // Quick lookup so each filter row can find its column without searching.
+  // build a Map so each FilterRow can find its column object quickly by id.
   const columnById = useMemo(() => {
     const map = new Map();
     columns.forEach((column) => map.set(column.id, column));
@@ -58,6 +55,7 @@ export const FilterPanel = memo(function FilterPanel({
         </div>
       </div>
 
+      {/* show a hint when no filters exist yet. */}
       {filters.length === 0 ? (
         <p className="filterPanelEmpty">
           No filters yet. Click <strong>+ Add filter</strong> to narrow the table by column.
@@ -80,10 +78,11 @@ export const FilterPanel = memo(function FilterPanel({
   );
 });
 
+// one row inside the filter panel.
 function FilterRow({ filter, columns, columnById, onChange, onRemove }) {
+  // null when the user picked "Any column".
   const column = filter.columnId === ANY_COLUMN ? null : columnById.get(filter.columnId);
-  // When the filter targets "Any column" we don't know the type, so we
-  // treat it as string -- those are the operators the global match supports.
+  // fall back to "string" for "Any column" because we do not know the type.
   const type = column?.type ?? "string";
   const operators = operatorsForType(type);
 
@@ -91,9 +90,9 @@ function FilterRow({ filter, columns, columnById, onChange, onRemove }) {
     const nextColumnId = event.target.value;
     const nextColumn = nextColumnId === ANY_COLUMN ? null : columnById.get(nextColumnId);
     const nextOperators = operatorsForType(nextColumn?.type ?? "string");
-    // If the current operator isn't valid for the new column type, pick
-    // the first one that is. Avoids weird states like "Equals" applied to
-    // a number column with operator "Starts with".
+
+    // if the current operator does not exist for the new column type,
+    // reset to the first valid operator so we do not have an impossible combination.
     const nextOperator = nextOperators.includes(filter.operator)
       ? filter.operator
       : nextOperators[0];
@@ -101,7 +100,7 @@ function FilterRow({ filter, columns, columnById, onChange, onRemove }) {
     onChange(filter.id, {
       columnId: nextColumnId,
       operator: nextOperator,
-      value: "", // reset since old value may not make sense for the new type
+      value: "", // reset value because the old one may not make sense for the new column
     });
   };
 
@@ -115,6 +114,7 @@ function FilterRow({ filter, columns, columnById, onChange, onRemove }) {
 
   return (
     <li className="filterRow">
+      {/* column picker: which column this filter targets. */}
       <select
         className="filterControl"
         value={filter.columnId}
@@ -129,6 +129,7 @@ function FilterRow({ filter, columns, columnById, onChange, onRemove }) {
         ))}
       </select>
 
+      {/* operator picker: contains / equals / greater than / etc. */}
       <select
         className="filterControl"
         value={filter.operator}
@@ -142,6 +143,7 @@ function FilterRow({ filter, columns, columnById, onChange, onRemove }) {
         ))}
       </select>
 
+      {/* value input: changes shape based on the column type. */}
       <ValueInput type={type} column={column} value={filter.value} onChange={handleValueChange} />
 
       <button
@@ -157,8 +159,7 @@ function FilterRow({ filter, columns, columnById, onChange, onRemove }) {
   );
 }
 
-// The input changes shape based on the column's type so the user always
-// gets the right keyboard / picker for the value they're typing.
+// renders the right input widget for the filter value depending on the column type.
 function ValueInput({ type, column, value, onChange }) {
   if (type === "number") {
     return (
@@ -173,6 +174,7 @@ function ValueInput({ type, column, value, onChange }) {
   }
 
   if (type === "boolean") {
+    // boolean only has two options so we use a simple yes/no dropdown.
     return (
       <select
         className="filterControl filterValue"
@@ -197,8 +199,7 @@ function ValueInput({ type, column, value, onChange }) {
     );
   }
 
-  // Select columns get their actual options so the user can't pick a
-  // value that doesn't exist in the data.
+  // select columns show only the valid options so the user cannot type a value that does not exist.
   if ((type === "select" || type === "selection") && column?.options) {
     const options = normalizeOptions(column.options);
     return (
@@ -218,7 +219,7 @@ function ValueInput({ type, column, value, onChange }) {
     );
   }
 
-  // Default: free text input (string columns + "Any column").
+  // default: free text for string columns and "Any column".
   return (
     <input
       type="text"

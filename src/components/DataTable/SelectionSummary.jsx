@@ -1,44 +1,36 @@
+// this component is the stats bar at the bottom of the table.
+// it works in two modes:
+//   - if rows are selected: shows stats for only the selected rows (count, sum, avg, min, max).
+//   - if nothing is selected: shows stats for all visible rows (after filters).
+// it only runs stats on numeric columns — string, boolean, and date columns are skipped.
+// it talks to: DataTable (which passes the rows, total count, visible columns, and selected ids),
+//              aggregationUtils (does the math),
+//              cellValueUtils (formats the numbers for display).
+
 import { memo, useMemo } from "react";
 import { aggregateColumn } from "../../utils/aggregationUtils.js";
 import { formatCellValue } from "../../utils/cellValueUtils.js";
 
-/*
- * Excel-style footer bar that summarises the table.
- *
- * Two modes, picked automatically:
- *   - Selection mode: at least one checkbox is ticked. The bar
- *     summarises the SELECTED rows and shows "N selected".
- *   - Overview mode (default): nothing is selected. The bar summarises
- *     EVERY row currently visible -- i.e. what's left after filters and
- *     sort. The label is "X of Y rows" when a filter is active, just
- *     "X rows" otherwise.
- *
- * Both modes show count / sum / avg / min / max for every visible numeric
- * column. Reusing formatCellValue means a currency column gets its
- * sum/avg formatted the same way the cells themselves render ("120,000$").
- *
- * The bar hides itself only when there's literally nothing to show
- * (filter returned zero rows AND nothing is selected) -- otherwise
- * keeping it visible gives the user value the moment they filter.
- */
 export const SelectionSummary = memo(function SelectionSummary({
   rows,
   totalRowCount,
   visibleColumns,
   selectedRowIds,
 }) {
+  // are we in selection mode (at least one row is ticked)?
   const isSelectionMode = selectedRowIds.size > 0;
 
-  // Choose which rows the stats run on.
-  // Selection wins because it's the more specific intent.
+  // choose which rows to run the stats on.
   const targetRows = useMemo(() => {
     if (isSelectionMode) {
+      // only the ticked rows.
       return rows.filter((row) => selectedRowIds.has(row.id));
     }
+    // all rows currently showing (after filters and sort).
     return rows;
   }, [rows, selectedRowIds, isSelectionMode]);
 
-  // Stats per visible NUMERIC column. Non-numeric columns are skipped.
+  // compute stats for every visible numeric column.
   const columnStats = useMemo(() => {
     if (targetRows.length === 0) return [];
     return visibleColumns
@@ -47,13 +39,16 @@ export const SelectionSummary = memo(function SelectionSummary({
         column,
         stats: aggregateColumn(targetRows, column.id),
       }))
+      // drop any column where aggregateColumn returned null (no numeric values found).
       .filter((entry) => entry.stats !== null);
   }, [targetRows, visibleColumns]);
 
+  // hide the bar entirely if there are no rows to summarise.
   if (targetRows.length === 0) {
     return null;
   }
 
+  // isFiltered is true when some rows are hidden by a filter (but we are not in selection mode).
   const isFiltered = !isSelectionMode && rows.length !== totalRowCount;
 
   return (
@@ -62,15 +57,18 @@ export const SelectionSummary = memo(function SelectionSummary({
         <span className="selectionSummaryDot" aria-hidden="true" />
         <span>
           {isSelectionMode ? (
+            // selection mode: "3 selected"
             <>
               <strong>{selectedRowIds.size.toLocaleString()}</strong> selected
             </>
           ) : isFiltered ? (
+            // filter active: "45 of 2500 rows"
             <>
               <strong>{rows.length.toLocaleString()}</strong> of{" "}
               {totalRowCount.toLocaleString()} rows
             </>
           ) : (
+            // no filter, no selection: "2500 rows"
             <>
               <strong>{rows.length.toLocaleString()}</strong> rows
             </>
@@ -87,6 +85,7 @@ export const SelectionSummary = memo(function SelectionSummary({
           {columnStats.map(({ column, stats }) => (
             <li key={column.id} className="selectionSummaryItem">
               <strong className="selectionSummaryTitle">{column.title}</strong>
+              {/* formatCellValue is used so a currency column shows its sum as "1,200,000$". */}
               <span className="selectionSummaryStat">
                 Sum: <em>{formatCellValue(column, stats.sum)}</em>
               </span>
