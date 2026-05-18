@@ -280,22 +280,21 @@ export function useEditableTable(initialRows, initialColumnIds, options = {}) {
   const deleteSelectedRows = useCallback(() => {
     if (selectedRowIds.size === 0) return;
 
+    const newRowIdSet = new Set(pendingNewRows.map((row) => row.id));
     const idsToRemoveFromNew = [];
     const idsToMarkDeleted = [];
-
-    setPendingNewRows((currentNew) => {
-      const newSet = new Set(currentNew.map((row) => row.id));
-      for (const id of selectedRowIds) {
-        if (newSet.has(id)) {
-          idsToRemoveFromNew.push(id);
-        } else {
-          idsToMarkDeleted.push(id);
-        }
+    for (const id of selectedRowIds) {
+      if (newRowIdSet.has(id)) {
+        idsToRemoveFromNew.push(id);
+      } else {
+        idsToMarkDeleted.push(id);
       }
-      if (idsToRemoveFromNew.length === 0) return currentNew;
+    }
+
+    if (idsToRemoveFromNew.length > 0) {
       const toDrop = new Set(idsToRemoveFromNew);
-      return currentNew.filter((row) => !toDrop.has(row.id));
-    });
+      setPendingNewRows((currentNew) => currentNew.filter((row) => !toDrop.has(row.id)));
+    }
 
     if (idsToMarkDeleted.length > 0) {
       setPendingDeletedIds((current) => {
@@ -322,7 +321,7 @@ export function useEditableTable(initialRows, initialColumnIds, options = {}) {
       current && selectedRowIds.has(current.rowId) ? null : current,
     );
     setSelectedRowIds(new Set());
-  }, [selectedRowIds]);
+  }, [selectedRowIds, pendingNewRows]);
 
   // Undo / redo: walk the committedRows snapshot stack. Pending changes are
   // dropped because they no longer make sense for the rolled-back data.

@@ -417,11 +417,16 @@ export function DataTable({
       </div>
 
       <div className="tableScroll" ref={scrollRef}>
-        <table className="dataTable" style={{ minWidth: tableWidth }}>
+        <table className="dataTable" style={{ width: `max(${tableWidth}px, 100%)` }}>
           <colgroup>
             <col style={{ width: SELECT_COLUMN_WIDTH }} />
             {visibleColumns.map((column) => (
-              <col key={column.id} style={{ width: column.width ?? DEFAULT_COLUMN_WIDTH }} />
+              <col
+                key={column.id}
+                style={{
+                  width: `calc((100% - ${SELECT_COLUMN_WIDTH}px - ${DELETE_COLUMN_WIDTH}px) * ${(column.width ?? DEFAULT_COLUMN_WIDTH) / (tableWidth - SELECT_COLUMN_WIDTH - DELETE_COLUMN_WIDTH)})`,
+                }}
+              />
             ))}
             <col style={{ width: DELETE_COLUMN_WIDTH }} />
           </colgroup>
