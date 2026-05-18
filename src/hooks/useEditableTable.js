@@ -354,6 +354,30 @@ export function useEditableTable(initialRows, initialColumnIds, options = {}) {
     setSelectedRowIds(new Set());
   }, []);
 
+  // apply one field value to every selected row at once.
+  // each row gets a draft entry for that column, exactly like a manual cell edit.
+  const bulkUpdateField = useCallback(
+    (columnId, value) => {
+      if (selectedRowIds.size === 0) return;
+      setDraftChanges((currentDrafts) => {
+        let next = currentDrafts;
+        for (const rowId of selectedRowIds) {
+          const savedRow = rowsById.get(rowId);
+          const savedValue = savedRow ? savedRow[columnId] : undefined;
+          next = setDraftCell(next, rowId, columnId, value, savedValue);
+        }
+        return next;
+      });
+      // close the editor if it was sitting on the column we just bulk-edited.
+      setEditingCell((current) =>
+        current && current.columnId === columnId && selectedRowIds.has(current.rowId)
+          ? null
+          : current,
+      );
+    },
+    [selectedRowIds, rowsById],
+  );
+
   // delete all currently selected rows at once.
   // we classify each id first (is it a pending-new row or a committed row?)
   // before calling any setState, because React does not run the setState
@@ -476,5 +500,6 @@ export function useEditableTable(initialRows, initialColumnIds, options = {}) {
     setSelectionForVisible,
     clearSelection,
     deleteSelectedRows,
+    bulkUpdateField,
   };
 }

@@ -23,6 +23,7 @@ import { exportRowsAsJson } from "../../utils/exportUtils.js";
 import { ANY_COLUMN, applyFilters } from "../../utils/filterUtils.js";
 import { cycleSortDirection, sortRows } from "../../utils/sortUtils.js";
 import { validateCell } from "../../utils/validationUtils.js";
+import { BulkEditPopover } from "./BulkEditPopover.jsx";
 import { ColumnPicker } from "./ColumnPicker.jsx";
 import { FilterPanel } from "./FilterPanel.jsx";
 import { SelectionSummary } from "./SelectionSummary.jsx";
@@ -86,6 +87,7 @@ export function DataTable({
     setSelectionForVisible,
     clearSelection,
     deleteSelectedRows,
+    bulkUpdateField,
   } = useEditableTable(initialData, initialColumnIds, { createRowId, normalizeRows });
 
   // sortState is null when no sort is active, or { columnId, direction } when one is.
@@ -379,7 +381,14 @@ export function DataTable({
             )
           )}
 
-          {/* only show the delete button when at least one row is selected. */}
+          {/* bulk-edit and delete buttons — only shown when at least one row is selected. */}
+          {selectedRowIds.size > 0 && (
+            <BulkEditPopover
+              columns={sortedColumns}
+              selectedCount={selectedRowIds.size}
+              onApply={bulkUpdateField}
+            />
+          )}
           {selectedRowIds.size > 0 && (
             <button
               type="button"
