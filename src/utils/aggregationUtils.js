@@ -5,6 +5,16 @@
 // this is a pure function (no React, no side effects) so it is easy to test.
 // used by SelectionSummary to power the stats bar at the bottom of the table.
 
+/** @typedef {import('./types.js').Row} Row */
+
+/**
+ * Compute count, sum, avg, min, and max for one numeric column across the given rows.
+ * Returns `null` when the column contains no finite numeric values.
+ *
+ * @param {Row[]} rows
+ * @param {string} columnId
+ * @returns {{ count: number, sum: number, avg: number, min: number, max: number } | null}
+ */
 export function aggregateColumn(rows, columnId) {
   // collect only valid finite numbers — skip nulls, strings, NaN, etc.
   const numericValues = [];

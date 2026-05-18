@@ -6,6 +6,20 @@
 // this file is used by DataTable (to apply filters) and FilterPanel (to know which
 // operators to show for each column type).
 
+/** @typedef {import('./types.js').Row} Row */
+/** @typedef {import('./types.js').ColumnDef} ColumnDef */
+
+/**
+ * A single filter rule applied to the table.
+ *
+ * @typedef {Object} Filter
+ * @property {string} id - stable key used as React list key
+ * @property {string} columnId - target column id, or ANY_COLUMN ("*") for global match
+ * @property {string} operator - e.g. "contains", "equals", "greaterThan"
+ * @property {*} value - the value to compare against
+ */
+
+/** @type {string} sentinel that means "match against every column" */
 // the special value used when the user picks "Any column" in the filter panel.
 export const ANY_COLUMN = "*";
 
@@ -20,6 +34,7 @@ const OPERATORS_BY_TYPE = {
   date: ["equals", "before", "after"],
 };
 
+/** @type {Object.<string, string>} human-readable labels for every operator id */
 // human-readable labels shown in the operator dropdown.
 export const OPERATOR_LABELS = {
   contains: "Contains",
@@ -32,12 +47,28 @@ export const OPERATOR_LABELS = {
   after: "After",
 };
 
+/**
+ * Return the list of valid operator ids for a given column type.
+ * Falls back to string operators for unknown types.
+ *
+ * @param {string} type - column type from {@link ColumnDef}
+ * @returns {string[]}
+ */
 // returns the list of valid operators for a column type.
 // falls back to string operators if the type is unknown.
 export function operatorsForType(type) {
   return OPERATORS_BY_TYPE[type] ?? OPERATORS_BY_TYPE.string;
 }
 
+/**
+ * Apply every active filter to the rows, combining them with AND.
+ * Returns the same array reference when there are no active filters.
+ *
+ * @param {Row[]} rows
+ * @param {Filter[]} filters
+ * @param {ColumnDef[]} columns - full schema (filters may target hidden columns)
+ * @returns {Row[]}
+ */
 // run all active filters against the row array.
 // returns the same array reference when there are no filters,
 // so React.memo on downstream components does not re-render unnecessarily.

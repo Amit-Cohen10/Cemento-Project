@@ -5,6 +5,15 @@
 // this is kept as a plain function outside React so it is easy to test
 // and can be reused if we ever need to export from another place.
 
+/** @typedef {import('./types.js').Row} Row */
+
+/**
+ * Serialise `rows` to JSON and trigger a browser file download.
+ *
+ * @param {Row[]} rows - rows to export (typically the filtered/sorted view)
+ * @param {string} [filename="seed.json"]
+ * @returns {void}
+ */
 export function exportRowsAsJson(rows, filename = "seed.json") {
   // convert the rows array to a nicely indented JSON string.
   const json = JSON.stringify(rows, null, 2);

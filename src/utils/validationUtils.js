@@ -10,6 +10,18 @@
 // used by DataTable (to build the errorsByCell map)
 // and collectInvalidCells (to find all errors before saving).
 
+/** @typedef {import('./types.js').ColumnDef} ColumnDef */
+/** @typedef {import('./types.js').Row} Row */
+/** @typedef {import('./types.js').DraftChanges} DraftChanges */
+
+/**
+ * Validate one cell value against its column's schema rules.
+ * Returns an error string on failure, or `null` when the value is valid.
+ *
+ * @param {ColumnDef} column
+ * @param {*} value
+ * @returns {string | null}
+ */
 export function validateCell(column, value) {
   if (!column) return null;
 
@@ -39,6 +51,14 @@ export function validateCell(column, value) {
   return null; // no error
 }
 
+/**
+ * Walk all rows and columns and collect every invalid cell, checking draft values first.
+ *
+ * @param {Row[]} rows
+ * @param {ColumnDef[]} columns
+ * @param {DraftChanges} draftChanges
+ * @returns {{ rowId: string, columnId: string, error: string }[]}
+ */
 // walk all rows and columns and collect every invalid cell.
 // checks draft values first because those are the values that would be saved.
 // returns an array of { rowId, columnId, error } objects.

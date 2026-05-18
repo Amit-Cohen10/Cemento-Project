@@ -19,6 +19,9 @@
 //   historyUtils - undo/redo snapshots
 //   storage      - read/write to localStorage
 
+/** @typedef {import('../utils/types.js').Row} Row */
+/** @typedef {import('../utils/types.js').DraftChanges} DraftChanges */
+
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   reconcileVisibleColumnIds,
@@ -56,6 +59,58 @@ function identityRows(rows) {
   return rows;
 }
 
+/**
+ * Central state hook for the editable table.
+ *
+ * State is split into four buckets:
+ *   - `committedRows`     – saved data, persisted to localStorage
+ *   - `draftChanges`      – unsaved cell-level edits `{ [rowId]: { [columnId]: value } }`
+ *   - `pendingNewRows`    – rows added but not yet saved (shown at the top)
+ *   - `pendingDeletedIds` – committed row ids marked for deletion but not yet saved
+ *
+ * Calling `saveChanges` collapses all three pending buckets into `committedRows`.
+ * Calling `discardChanges` throws the pending buckets away without touching committed state.
+ *
+ * @param {Row[]} initialRows - initial data loaded before localStorage hydration
+ * @param {string[]} initialColumnIds - ordered list of column ids to show by default
+ * @param {Object} [options]
+ * @param {function(Row[]): string} [options.createRowId] - generates a unique id for a new row;
+ *   receives the current merged row list so it can avoid collisions
+ * @param {function(Row[]): Row[]} [options.normalizeRows] - normalizes row ids after loading
+ *   from storage (e.g. to enforce unique numeric ids)
+ * @returns {{
+ *   rows: Row[],
+ *   visibleColumnIds: string[],
+ *   editingCell: { rowId: string, columnId: string } | null,
+ *   draftCellCount: number,
+ *   pendingNewRowCount: number,
+ *   pendingDeletedCount: number,
+ *   pendingChangesCount: number,
+ *   hasUnsavedChanges: boolean,
+ *   pendingNewRowIds: Set<string>,
+ *   toggleColumnVisibility: function(string): void,
+ *   replaceVisibleColumnIds: function(string[]): void,
+ *   startEditing: function(string, string): void,
+ *   stopEditing: function(): void,
+ *   updateDraftCell: function(string, string, *): void,
+ *   cancelCellEdit: function(string, string): void,
+ *   getCellValue: function(Row, string): *,
+ *   isCellDirty: function(string, string): boolean,
+ *   saveChanges: function(): void,
+ *   discardChanges: function(): void,
+ *   addRow: function(): void,
+ *   deleteRow: function(string): void,
+ *   undo: function(): void,
+ *   redo: function(): void,
+ *   canUndo: boolean,
+ *   canRedo: boolean,
+ *   selectedRowIds: Set<string>,
+ *   toggleRowSelection: function(string): void,
+ *   setSelectionForVisible: function(string[], boolean): void,
+ *   clearSelection: function(): void,
+ *   deleteSelectedRows: function(): void,
+ * }}
+ */
 export function useEditableTable(initialRows, initialColumnIds, options = {}) {
   const {
     createRowId = createDefaultRowId,

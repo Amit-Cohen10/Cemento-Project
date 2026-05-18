@@ -13,6 +13,24 @@
 import { useEffect, useMemo, useState } from "react";
 import { getVirtualRange } from "../utils/virtualRows.js";
 
+/**
+ * Track the scroll container's position and return which row indexes to render.
+ * Wraps the pure {@link getVirtualRange} function with React scroll/resize listeners.
+ *
+ * @param {Object} options
+ * @param {number} options.rowCount - total number of rows in the dataset
+ * @param {number} options.rowHeight - fixed height of every row in pixels
+ * @param {React.RefObject<HTMLElement>} options.scrollRef - ref attached to the scrollable container
+ * @param {number} [options.overscan=8] - extra rows to render above and below the viewport
+ * @returns {{
+ *   startIndex: number,
+ *   endIndex: number,
+ *   paddingTop: number,
+ *   paddingBottom: number,
+ *   totalHeight: number,
+ *   indexes: number[]
+ * }}
+ */
 export function useVirtualRows({ rowCount, rowHeight, scrollRef, overscan = 8 }) {
   // we track two numbers from the DOM: how far the user has scrolled,
   // and how tall the visible area is.

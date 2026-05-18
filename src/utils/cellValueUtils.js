@@ -7,6 +7,8 @@
 //         SelectionSummary (to format stats),
 //         TableHeader (to decide text alignment).
 
+/** @typedef {import('./types.js').ColumnDef} ColumnDef */
+
 // we create these formatters once at module level instead of inside a function
 // because creating an Intl formatter is expensive and we call format() many times per render.
 
@@ -25,6 +27,13 @@ const dateFormatter = new Intl.DateTimeFormat("en-US", {
   dateStyle: "medium",
 });
 
+/**
+ * Normalise select column options into a uniform `{ label, value }` shape.
+ * Accepts plain strings or `{ label, value }` objects.
+ *
+ * @param {Array<string | { label: string, value: * }>} [options]
+ * @returns {{ label: string, value: * }[]}
+ */
 // select column options can be written as plain strings ("Junior")
 // or as objects ({ label: "Junior", value: "junior" }).
 // this function normalizes both formats into the object shape
@@ -45,6 +54,14 @@ export function normalizeOptions(options = []) {
   });
 }
 
+/**
+ * Convert a raw input value (always a string from the DOM) into the correct
+ * JavaScript type for the column (number, boolean, ISO date string, etc.).
+ *
+ * @param {ColumnDef} column
+ * @param {string | boolean | number | null | undefined} rawValue
+ * @returns {*}
+ */
 // convert the raw string from an <input> element into the correct type for the column.
 // inputs always give us strings, so number columns need to parse the string back to a number.
 export function parseCellValue(column, rawValue) {
@@ -89,6 +106,14 @@ export function parseCellValue(column, rawValue) {
   return String(rawValue ?? "");
 }
 
+/**
+ * Format a stored cell value as the human-readable string shown in the cell.
+ * Returns `"Not set"` for null / undefined / empty string.
+ *
+ * @param {ColumnDef} column
+ * @param {*} value
+ * @returns {string}
+ */
 // turn a stored value into the human-readable text shown in the cell.
 export function formatCellValue(column, value) {
   if (value === null || value === undefined || value === "") {
@@ -123,6 +148,13 @@ export function formatCellValue(column, value) {
   return String(value);
 }
 
+/**
+ * Convert a stored ISO date string to the `"YYYY-MM-DD"` format required by
+ * `<input type="date">`. Returns `""` when the value is missing or invalid.
+ *
+ * @param {string | null | undefined} value
+ * @returns {string}
+ */
 // convert a stored ISO date string to "YYYY-MM-DD" which is what <input type="date"> needs.
 // returns an empty string if the value is missing or invalid.
 export function toDateInputValue(value) {
@@ -137,6 +169,12 @@ export function toDateInputValue(value) {
   return date.toISOString().slice(0, 10);
 }
 
+/**
+ * Return the CSS text-alignment class suffix for a column: `"left"`, `"right"`, or `"center"`.
+ *
+ * @param {ColumnDef} column
+ * @returns {"left" | "right" | "center"}
+ */
 // returns the CSS text alignment for a column based on its type.
 // numbers are right-aligned (conventional), booleans are centered (the pill is small),
 // everything else is left-aligned.

@@ -25,6 +25,25 @@ function range(startIndex, endIndex) {
   );
 }
 
+/**
+ * Calculate which row indexes to render and the spacer heights needed to keep the
+ * scrollbar size correct.
+ *
+ * @param {Object} options
+ * @param {number} options.rowCount - total number of rows in the dataset
+ * @param {number} options.rowHeight - fixed height of every row in pixels
+ * @param {number} options.viewportHeight - visible height of the scroll container in pixels
+ * @param {number} options.scrollTop - current scroll offset in pixels
+ * @param {number} [options.overscan=6] - extra rows to render above and below the viewport
+ * @returns {{
+ *   startIndex: number,
+ *   endIndex: number,
+ *   paddingTop: number,
+ *   paddingBottom: number,
+ *   totalHeight: number,
+ *   indexes: number[]
+ * }}
+ */
 export function getVirtualRange({
   rowCount,
   rowHeight,

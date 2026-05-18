@@ -7,6 +7,9 @@
 //
 // these are all plain functions (no React). they are used by useEditableTable.
 
+/** @typedef {import('./types.js').Row} Row */
+/** @typedef {import('./types.js').DraftChanges} DraftChanges */
+
 // a safe way to check if an object has a property.
 // using Object.prototype.hasOwnProperty.call protects against edge cases
 // where a column id might clash with a built-in JavaScript property name
@@ -31,6 +34,12 @@ function normalizeNumericIdValue(value) {
   return trailingNumber ? String(Number(trailingNumber[1])) : null;
 }
 
+/**
+ * Rewrite every row id to a unique numeric string, resolving collisions in order.
+ *
+ * @param {Row[]} rows
+ * @returns {Row[]}
+ */
 // takes an array of rows and returns a new array where every row has a unique numeric string id.
 // if two rows end up with the same number, the second one gets the next available number.
 export function normalizeRowsToUniqueNumericIds(rows) {
@@ -57,6 +66,12 @@ export function normalizeRowsToUniqueNumericIds(rows) {
   });
 }
 
+/**
+ * Return the next numeric string id — one higher than the current maximum id in the array.
+ *
+ * @param {Row[]} rows
+ * @returns {string}
+ */
 // returns the next available numeric id (one higher than the current maximum).
 // used when the user clicks "+ Add row".
 export function getNextNumericRowId(rows) {
@@ -71,6 +86,15 @@ export function getNextNumericRowId(rows) {
   return String(maxId + 1);
 }
 
+/**
+ * Return a new rows array with one cell's value replaced (immutable update).
+ *
+ * @param {Row[]} rows
+ * @param {string} rowId
+ * @param {string} columnId
+ * @param {*} value
+ * @returns {Row[]}
+ */
 // return a new array with one cell updated.
 // we create a new array (instead of mutating the existing one) because React
 // only re-renders when it sees a new reference — mutating does not trigger a re-render.
@@ -86,6 +110,14 @@ export function updateRowCell(rows, rowId, columnId, value) {
   });
 }
 
+/**
+ * Return the draft value for a cell if one exists, otherwise the committed row value.
+ *
+ * @param {Row} row
+ * @param {DraftChanges} draftChanges
+ * @param {string} columnId
+ * @returns {*}
+ */
 // returns the draft value for a cell if one exists, otherwise the saved value from the row.
 export function getDraftCellValue(row, draftChanges, columnId) {
   const rowDraft = draftChanges[row.id];
@@ -97,11 +129,29 @@ export function getDraftCellValue(row, draftChanges, columnId) {
   return row[columnId];
 }
 
+/**
+ * Return true if the cell has an unsaved draft value.
+ *
+ * @param {DraftChanges} draftChanges
+ * @param {string} rowId
+ * @param {string} columnId
+ * @returns {boolean}
+ */
 // returns true if this cell has an unsaved draft value.
 export function hasDraftCell(draftChanges, rowId, columnId) {
   return Boolean(draftChanges[rowId] && hasOwn(draftChanges[rowId], columnId));
 }
 
+/**
+ * Write a draft value for one cell; if the new value equals the saved value, remove the draft.
+ *
+ * @param {DraftChanges} draftChanges
+ * @param {string} rowId
+ * @param {string} columnId
+ * @param {*} value
+ * @param {*} savedValue - the committed value to compare against
+ * @returns {DraftChanges}
+ */
 // write a draft value for one cell.
 // if the new value is the same as the saved value, we remove the draft instead
 // so the "unsaved" orange dot does not appear when nothing actually changed.
@@ -119,6 +169,14 @@ export function setDraftCell(draftChanges, rowId, columnId, value, savedValue) {
   };
 }
 
+/**
+ * Remove the draft for one cell; also removes the row entry when no dirty cells remain.
+ *
+ * @param {DraftChanges} draftChanges
+ * @param {string} rowId
+ * @param {string} columnId
+ * @returns {DraftChanges}
+ */
 // remove the draft for one cell.
 // if the row has no more dirty cells after this, we also remove the row entry
 // to keep the draftChanges object clean.
@@ -142,6 +200,13 @@ export function removeDraftCell(draftChanges, rowId, columnId) {
   };
 }
 
+/**
+ * Overlay all draft cell values onto the committed rows (called as part of "Save changes").
+ *
+ * @param {Row[]} rows
+ * @param {DraftChanges} draftChanges
+ * @returns {Row[]}
+ */
 // overlay all draft values onto the saved rows.
 // called once as part of "Save changes".
 export function applyDraftChanges(rows, draftChanges) {
@@ -158,6 +223,12 @@ export function applyDraftChanges(rows, draftChanges) {
   });
 }
 
+/**
+ * Count the total number of individual dirty cells across all rows.
+ *
+ * @param {DraftChanges} draftChanges
+ * @returns {number}
+ */
 // count the total number of individual dirty cells (not rows).
 // shown in the toolbar tooltip so the user knows exactly how many edits are pending.
 export function countDraftCells(draftChanges) {
@@ -167,6 +238,15 @@ export function countDraftCells(draftChanges) {
   );
 }
 
+/**
+ * Build the display row list: pending-new rows first, committed rows with deletions removed.
+ * Returns the same `committedRows` reference when nothing is pending (no-op fast path).
+ *
+ * @param {Row[]} committedRows
+ * @param {Row[]} pendingNewRows
+ * @param {Set<string>} pendingDeletedIds
+ * @returns {Row[]}
+ */
 // build the display list the table renders: pending-new rows at the top,
 // then committed rows with deleted ones removed.
 // only committedRows is saved to localStorage — everything else is temporary.
@@ -188,6 +268,16 @@ export function mergePendingRows(committedRows, pendingNewRows, pendingDeletedId
   return [...pendingNewRows, ...visibleCommitted];
 }
 
+/**
+ * Permanently apply all pending changes to produce the new committed rows array.
+ * Called once when the user clicks "Save changes".
+ *
+ * @param {Row[]} committedRows
+ * @param {DraftChanges} draftChanges
+ * @param {Row[]} pendingNewRows
+ * @param {Set<string>} pendingDeletedIds
+ * @returns {Row[]}
+ */
 // permanently apply all pending changes to committedRows.
 // called once when the user clicks "Save changes".
 export function commitPendingChanges(

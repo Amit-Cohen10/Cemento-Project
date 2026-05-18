@@ -10,13 +10,37 @@
 //
 // used by useEditableTable.
 
+/**
+ * A pair of stacks that implement undo/redo for any snapshot type T.
+ *
+ * @template T
+ * @typedef {Object} History
+ * @property {T[]} past - ordered snapshots; last entry is the most recent
+ * @property {T[]} future - snapshots available to redo; last entry is the next one
+ */
+
 export const HISTORY_LIMIT = 50;
 
+/**
+ * Create an empty history with no past or future entries.
+ *
+ * @returns {History<*>}
+ */
 // create an empty history with no past or future.
 export function createHistory() {
   return { past: [], future: [] };
 }
 
+/**
+ * Snapshot `currentValue` into the past stack before mutating it.
+ * Clears the future stack because a new edit invalidates any undone branch.
+ * Drops the oldest past entry if the stack exceeds HISTORY_LIMIT.
+ *
+ * @template T
+ * @param {History<T>} history
+ * @param {T} currentValue
+ * @returns {History<T>}
+ */
 // call this before mutating the current value.
 // it saves the current value as a "past" snapshot and clears the future
 // (a new edit always cancels the redo branch, just like in any text editor).
@@ -28,6 +52,15 @@ export function pushHistory(history, currentValue) {
   return { past, future: [] };
 }
 
+/**
+ * Step backward: restore the most recent past snapshot.
+ * Returns `null` when there is nothing to undo.
+ *
+ * @template T
+ * @param {History<T>} history
+ * @param {T} currentValue - the value to push onto the future stack
+ * @returns {{ value: T, history: History<T> } | null}
+ */
 // step backward: move the current value into the future and restore the most recent past snapshot.
 // returns { value, history } or null if there is nothing to undo.
 export function undo(history, currentValue) {
@@ -42,6 +75,15 @@ export function undo(history, currentValue) {
   };
 }
 
+/**
+ * Step forward: restore the most recent future snapshot.
+ * Returns `null` when there is nothing to redo.
+ *
+ * @template T
+ * @param {History<T>} history
+ * @param {T} currentValue - the value to push onto the past stack
+ * @returns {{ value: T, history: History<T> } | null}
+ */
 // step forward: move the current value into the past and restore the most recent future snapshot.
 // returns { value, history } or null if there is nothing to redo.
 export function redo(history, currentValue) {
@@ -56,11 +98,23 @@ export function redo(history, currentValue) {
   };
 }
 
+/**
+ * Return true if there is at least one past snapshot to undo to.
+ *
+ * @param {History<*>} history
+ * @returns {boolean}
+ */
 // returns true if there is at least one state to undo to.
 export function canUndo(history) {
   return history.past.length > 0;
 }
 
+/**
+ * Return true if there is at least one future snapshot to redo to.
+ *
+ * @param {History<*>} history
+ * @returns {boolean}
+ */
 // returns true if there is at least one state to redo to.
 export function canRedo(history) {
   return history.future.length > 0;
