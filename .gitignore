@@ -3,6 +3,7 @@ dist
 .DS_Store
 coverage
 *.log
+*.zip
 .vite
 
 # Local notes and tooling that should not be in the repo

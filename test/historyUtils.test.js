@@ -19,13 +19,13 @@ test("createHistory starts empty", () => {
 
 test("pushHistory captures the current value and clears the future", () => {
   let h = createHistory();
-  // Pretend the future has a redo entry that was set earlier.
+
   h = { past: [], future: ["redoable"] };
 
   h = pushHistory(h, "v1");
 
   assert.deepEqual(h.past, ["v1"]);
-  // Any new edit invalidates the redo branch.
+
   assert.deepEqual(h.future, []);
 });
 
@@ -45,7 +45,7 @@ test("undo returns null when there is nothing to undo", () => {
 });
 
 test("redo replays the latest future snapshot", () => {
-  // History after an undo: past=[v1], future=[v3], current=v2.
+
   const h = { past: ["v1"], future: ["v3"] };
   const result = redo(h, "v2");
   assert.equal(result.value, "v3");
@@ -59,12 +59,12 @@ test("redo returns null when there is nothing to redo", () => {
 
 test("pushHistory caps the past at HISTORY_LIMIT", () => {
   let h = createHistory();
-  // Push HISTORY_LIMIT + 5 entries.
+
   for (let i = 0; i < HISTORY_LIMIT + 5; i += 1) {
     h = pushHistory(h, i);
   }
   assert.equal(h.past.length, HISTORY_LIMIT);
-  // The very oldest entries are dropped first.
+
   assert.equal(h.past[0], 5);
   assert.equal(h.past[h.past.length - 1], HISTORY_LIMIT + 4);
 });

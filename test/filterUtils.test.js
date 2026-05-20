@@ -7,15 +7,11 @@ import {
   operatorsForType,
 } from "../src/utils/filterUtils.js";
 
-// ---------------------------------------------------------------------------
-// operatorsForType + OPERATOR_LABELS sanity checks
-// ---------------------------------------------------------------------------
-
 test("operatorsForType returns the right list per column type", () => {
   assert.deepEqual(operatorsForType("number"), ["equals", "greaterThan", "lessThan"]);
   assert.deepEqual(operatorsForType("boolean"), ["equals"]);
   assert.deepEqual(operatorsForType("date"), ["equals", "before", "after"]);
-  // Unknown types fall back to the string operators rather than crashing.
+
   assert.ok(operatorsForType("nope").includes("contains"));
 });
 
@@ -28,10 +24,6 @@ test("OPERATOR_LABELS covers every operator the type map can produce", () => {
     assert.ok(OPERATOR_LABELS[op], `missing label for operator '${op}'`);
   }
 });
-
-// ---------------------------------------------------------------------------
-// applyFilters
-// ---------------------------------------------------------------------------
 
 const employeeColumns = [
   { id: "name", type: "string", title: "Name" },
@@ -74,8 +66,7 @@ test("applyFilters returns the same array reference when no filters are set", ()
 });
 
 test("applyFilters skips filters that have no value yet (still being built)", () => {
-  // A filter row the user just added but hasn't typed in yet shouldn't
-  // wipe the whole table.
+
   const filters = [
     { id: "f1", columnId: "team", operator: "equals", value: "" },
   ];
@@ -150,8 +141,7 @@ test("applyFilters: boolean equals", () => {
 });
 
 test("applyFilters: boolean equals rejects non-yes/no query values", () => {
-  // Defensive: "amit" is not true/false so the filter shouldn't match
-  // every No row by coercing it to false.
+
   assert.deepEqual(
     applyFilters(
       employees,
@@ -201,7 +191,7 @@ test("applyFilters ignores a filter pointing at a deleted column", () => {
   const filters = [
     { id: "f1", columnId: "ghost-column", operator: "equals", value: "x" },
   ];
-  // No matching column should be treated as a no-op, not as "match none".
+
   assert.equal(applyFilters(employees, filters, employeeColumns).length, employees.length);
 });
 

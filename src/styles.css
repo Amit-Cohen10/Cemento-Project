@@ -1,20 +1,11 @@
-/* ----------------------------------------------------------------------
- * Brand palette: Cemento — orange, black, and white.
- *
- * I put every brand colour behind a CSS variable so swapping the theme
- * later is one edit at the top of this file, not a hundred find-and-
- * replaces.
- * -------------------------------------------------------------------- */
-
 :root {
-  /* Brand */
+
   --brand-orange: #f97316;
   --brand-orange-hover: #ea580c;
   --brand-orange-soft: #fff7ed;
   --brand-orange-border: #fdba74;
   --brand-black: #1a1a1a;
 
-  /* Neutrals */
   --text-primary: #1a1a1a;
   --text-secondary: #525252;
   --text-muted: #737373;
@@ -25,7 +16,6 @@
   --bg-row-alt: #fafafa;
   --bg-soft: #f5f5f5;
 
-  /* Functional */
   --danger: #dc2626;
   --danger-hover: #b91c1c;
   --danger-soft: #fef2f2;
@@ -61,18 +51,11 @@ button {
 }
 
 .appShell {
-  /* Cap the layout at 1800px so the table has enough room to lay out all
-     nine columns without the table getting a horizontal scrollbar on a
-     standard 1920x1080 monitor. On wider screens, the calc keeps a 24px
-     gutter on each side so the table never touches the viewport edge. */
+
   width: min(1800px, calc(100vw - 32px));
   margin: 0 auto;
   padding: 32px 0;
 }
-
-/* ----------------------------------------------------------------------
- * Brand bar: logo on a white card + page title beside it.
- * -------------------------------------------------------------------- */
 
 .brandBar {
   display: flex;
@@ -83,9 +66,7 @@ button {
 }
 
 .logoCard {
-  /* Solid white card behind the logo so it stays readable even if the page
-     background shifts to grey. Subtle orange accent on the left edge ties
-     it to the brand. */
+
   display: inline-flex;
   align-items: center;
   padding: 14px 22px;
@@ -124,10 +105,6 @@ h1 {
   line-height: 1.1;
   letter-spacing: -0.5px;
 }
-
-/* ----------------------------------------------------------------------
- * Toolbar pills + buttons
- * -------------------------------------------------------------------- */
 
 .headerBadge,
 .statPill {
@@ -179,20 +156,12 @@ h1 {
   flex-wrap: wrap;
 }
 
-/* ----------------------------------------------------------------------
- * Columns dropdown
- *
- * The wrapper is a native <details> element. <summary> is the trigger
- * button; the panel sits absolutely under it so opening it doesn't push
- * the rest of the toolbar around.
- * -------------------------------------------------------------------- */
-
 .columnPicker {
   position: relative;
 }
 
 .columnPickerToggle {
-  /* Reset default disclosure styling so it looks like a normal button. */
+
   list-style: none;
   display: inline-flex;
   align-items: center;
@@ -453,10 +422,6 @@ h1 {
   background: var(--danger-hover);
 }
 
-/* ----------------------------------------------------------------------
- * Selection column + row
- * -------------------------------------------------------------------- */
-
 .selectHeader,
 .selectCell {
   width: 44px;
@@ -482,8 +447,6 @@ h1 {
   background: var(--brand-orange-soft);
 }
 
-/* Rows the user added in this session but hasn't clicked "Save changes" on
-   yet. A green left edge tells the user "this is new and pending". */
 .evenRow.isPendingNew td,
 .oddRow.isPendingNew td {
   background: #f0fdf4;
@@ -493,10 +456,6 @@ h1 {
 .oddRow.isPendingNew td:first-child {
   box-shadow: inset 3px 0 0 #16a34a;
 }
-
-/* ----------------------------------------------------------------------
- * Filter panel
- * -------------------------------------------------------------------- */
 
 .filterPanel {
   padding: 14px 16px;
@@ -590,10 +549,6 @@ h1 {
   color: var(--danger-hover);
 }
 
-/* ----------------------------------------------------------------------
- * Status row + table
- * -------------------------------------------------------------------- */
-
 .tableStatus {
   min-height: 40px;
   padding: 10px 16px;
@@ -604,11 +559,7 @@ h1 {
 }
 
 .tableScroll {
-  /* Pin the visible window to 10 rows + the sticky header. Anything past
-     row 10 is reached via the inner scrollbar, but the toolbar, filter
-     panel and selection footer all stay above the page fold on a
-     standard 1080p monitor. The --row-height variable is set on the
-     shell from DEFAULT_ROW_HEIGHT, so the math stays in sync. */
+
   height: calc(var(--row-height, 52px) * 10 + 48px);
   min-height: 360px;
   overflow: auto;
@@ -621,8 +572,6 @@ h1 {
   table-layout: fixed;
 }
 
-/* Dark header for high-contrast on the white table body. The title text is
-   white so the brand black + orange accent really stands out. */
 th {
   position: sticky;
   top: 0;
@@ -680,8 +629,7 @@ th.deleteHeader:hover {
 
 td {
   position: relative;
-  /* Row height is set inline from the JS DEFAULT_ROW_HEIGHT so virtualization
-     math and CSS stay in sync from one source of truth. */
+
   height: var(--row-height, 52px);
   padding: 0 14px;
   border-bottom: 1px solid var(--border-color);
@@ -778,10 +726,6 @@ td {
   text-align: right;
 }
 
-/* ----------------------------------------------------------------------
- * Cell pills (boolean / select)
- * -------------------------------------------------------------------- */
-
 .booleanPill,
 .selectPill {
   display: inline-flex;
@@ -811,10 +755,6 @@ td {
   background: var(--brand-orange-soft);
   color: var(--brand-orange-hover);
 }
-
-/* ----------------------------------------------------------------------
- * Editor inputs (active cell)
- * -------------------------------------------------------------------- */
 
 .cellInput {
   width: 100%;
@@ -899,10 +839,6 @@ td {
   background: var(--bg-row-alt);
 }
 
-/* ----------------------------------------------------------------------
- * Selection summary footer ("Excel status bar")
- * -------------------------------------------------------------------- */
-
 .selectionSummary {
   display: flex;
   align-items: stretch;
@@ -972,10 +908,6 @@ td {
   font-style: normal;
   font-weight: 700;
 }
-
-/* ----------------------------------------------------------------------
- * Bulk edit popover (appears in the toolbar when rows are selected)
- * -------------------------------------------------------------------- */
 
 .bulkEditPopover {
   position: relative;

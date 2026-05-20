@@ -21,12 +21,12 @@ test("parseCellValue keeps each supported type correct", () => {
 });
 
 test("parseCellValue returns null for invalid numbers and treats falsy bool inputs as false", () => {
-  // "abc" is not a finite number, so we save null rather than NaN.
+
   assert.equal(parseCellValue({ type: "number" }, "abc"), null);
-  // Empty / null / undefined all collapse to a clean null for numbers.
+
   assert.equal(parseCellValue({ type: "number" }, null), null);
   assert.equal(parseCellValue({ type: "number" }, undefined), null);
-  // Boolean parsing only converts well-known truthy strings.
+
   assert.equal(parseCellValue({ type: "boolean" }, "false"), false);
   assert.equal(parseCellValue({ type: "boolean" }, "on"), true);
   assert.equal(parseCellValue({ type: "boolean" }, 1), true);
@@ -40,7 +40,7 @@ test("parseCellValue handles select options provided as objects", () => {
       { label: "Senior", value: "SR" },
     ],
   };
-  // The <option value> in the DOM is always a string, so we compare loosely.
+
   assert.equal(parseCellValue(column, "SR"), "SR");
 });
 
@@ -63,9 +63,9 @@ test("formatCellValue renders readable values", () => {
 });
 
 test("formatCellValue formats currency numbers and falls back nicely", () => {
-  // $ is intentionally placed on the right (1,500$) per the product copy.
+
   assert.equal(formatCellValue({ type: "number", format: "currency" }, 1500), "1,500$");
-  // Unknown select value just shows the raw value as text.
+
   assert.equal(
     formatCellValue({ type: "select", options: ["A", "B"] }, "Z"),
     "Z",
@@ -83,14 +83,14 @@ test("getColumnAlignment picks a sensible default per type", () => {
 
 test("parseCellValue normalises date input to an ISO string and handles bad input", () => {
   const column = { type: "date" };
-  // <input type="date"> hands us a YYYY-MM-DD string.
+
   assert.equal(parseCellValue(column, "2024-03-15"), "2024-03-15T00:00:00.000Z");
   assert.equal(parseCellValue(column, ""), null);
   assert.equal(parseCellValue(column, "not-a-date"), null);
 });
 
 test("formatCellValue renders a date in the user's locale", () => {
-  // We use dateStyle: "medium" which on en-US looks like "Mar 15, 2024".
+
   const formatted = formatCellValue({ type: "date" }, "2024-03-15T00:00:00.000Z");
   assert.match(formatted, /2024/);
   assert.equal(formatCellValue({ type: "date" }, null), "Not set");

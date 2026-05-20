@@ -1,18 +1,3 @@
-/*
- * Generates the initial seed.json for the data table.
- *
- * Run with: npm run seed:regenerate
- *
- * The PDF Q&A recommends Faker, so I use it here to build a realistic data
- * set without writing each row by hand. The output gets committed to git as
- * public/seed.json, so anyone who clones the repo sees the same demo
- * data on first load.
- *
- * After the user has edited the table in the browser and clicks the
- * "Export data" button, they get a downloaded JSON that they can drop in
- * here to replace the seed.
- */
-
 import { faker } from "@faker-js/faker";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
@@ -28,9 +13,6 @@ const roleOptions = ["Frontend", "Backend", "Full Stack", "QA", "Product"];
 const levelOptions = ["Junior", "Mid", "Senior", "Lead"];
 const teamOptions = ["Platform", "Growth", "Core Product", "Operations", "Infrastructure"];
 
-// Same seed every run, so the data set is reproducible. This makes the file
-// diff-friendly and lets the user trust that "regenerate" gives the same
-// result if no code changed.
 faker.seed(SEED_VALUE);
 
 const rows = Array.from({ length: ROW_COUNT }, (_, index) => ({

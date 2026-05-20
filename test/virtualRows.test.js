@@ -45,8 +45,7 @@ test("getVirtualRange starts at index 0 when scrolled to the top", () => {
 });
 
 test("getVirtualRange clamps the end index when scrolled past the last row", () => {
-  // The user scrolled to the bottom of a 10-row list. The last visible index
-  // must not exceed rowCount - 1 even with overscan added.
+
   const result = getVirtualRange({
     rowCount: 10,
     rowHeight: 50,
@@ -60,7 +59,7 @@ test("getVirtualRange clamps the end index when scrolled past the last row", () 
 });
 
 test("getVirtualRange survives a negative scrollTop", () => {
-  // Some browsers fire negative scrollTop during rubber-band scrolling.
+
   const result = getVirtualRange({
     rowCount: 50,
     rowHeight: 40,
@@ -82,6 +81,5 @@ test("getVirtualRange returns the right totalHeight regardless of scroll", () =>
     overscan: 3,
   });
 
-  // totalHeight is what the parent uses to make the scroll bar feel correct.
   assert.equal(result.totalHeight, 50000);
 });

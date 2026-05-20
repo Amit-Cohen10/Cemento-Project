@@ -4,7 +4,7 @@ import { aggregateColumn } from "../src/utils/aggregationUtils.js";
 
 test("aggregateColumn returns null when there are no numeric values", () => {
   assert.equal(aggregateColumn([], "salary"), null);
-  // Strings / nulls / undefined are not counted.
+
   assert.equal(
     aggregateColumn([{ salary: null }, { salary: "" }, { salary: "abc" }], "salary"),
     null,
@@ -33,7 +33,7 @@ test("aggregateColumn ignores rows where the column is missing or non-numeric", 
     { salary: null },
     { salary: "lots" },
     { salary: 50 },
-    { /* no salary at all */ name: "Amit" },
+    {  name: "Amit" },
   ];
   const stats = aggregateColumn(rows, "salary");
   assert.equal(stats.count, 2);
@@ -59,7 +59,7 @@ test("aggregateColumn handles negative numbers and zero correctly", () => {
 });
 
 test("aggregateColumn rejects Infinity and NaN as data", () => {
-  // Number.isFinite filters them out so users don't see junk averages.
+
   const stats = aggregateColumn(
     [{ x: 100 }, { x: Infinity }, { x: NaN }, { x: 50 }],
     "x",

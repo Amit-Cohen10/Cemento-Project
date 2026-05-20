@@ -5,7 +5,7 @@ plain JavaScript and React (no TypeScript, no table library).
 
 ## Run locally
 
-You need Node.js 18 or newer (npm ships with it). If you don't have it:
+You need Node.js 20.19+ or 22.12+ (npm ships with it). If you don't have it:
 
 - **macOS**: `brew install node`
 - **Windows / Linux**: install from <https://nodejs.org/en/download>
@@ -21,6 +21,19 @@ npm run build # production build into ./dist
 
 Everything the project needs is listed in `package.json`, so a fresh
 `git clone` (or unzip) followed by `npm install` gives a working app.
+
+## Submitting as a ZIP
+
+The ZIP should include the source files, `package.json`, `package-lock.json`,
+`README.md`, and the `public/` assets. It should not include `node_modules/`,
+`dist/`, `.git/`, or local editor/system files. After unzipping, run:
+
+```bash
+npm install
+npm test
+npm run build
+npm run dev
+```
 
 ## What the table does
 
@@ -131,7 +144,7 @@ public/
 scripts/
   generateSeed.js               One-off Faker-based seed generator
 test/
-  *.test.js                     node:test unit tests for the helpers (76 tests)
+  *.test.js                     node:test unit tests for the helpers (86 tests)
 ```
 
 ## Schema
@@ -204,7 +217,7 @@ No existing property was removed or had its type changed.
 `npm test` runs the helper-function unit tests with Node's built-in test
 runner (`node --test`). No extra test dependencies needed.
 
-Covered (76 tests total):
+Covered (86 tests total):
 
 - `cellValueUtils`: parse, format, normalizeOptions, getColumnAlignment,
   date round-trip.

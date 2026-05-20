@@ -15,7 +15,7 @@ test("cycleSortDirection cycles asc -> desc -> off and resets on column change",
     cycleSortDirection({ columnId: "name", direction: "desc" }, "name"),
     null,
   );
-  // Switching to a different column always starts at asc.
+
   assert.deepEqual(
     cycleSortDirection({ columnId: "name", direction: "desc" }, "role"),
     { columnId: "role", direction: "asc" },

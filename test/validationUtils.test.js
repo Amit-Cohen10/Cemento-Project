@@ -15,7 +15,7 @@ test("validateCell flags missing values when required: true", () => {
   assert.equal(validateCell(column, ""), "Required");
   assert.equal(validateCell(column, null), "Required");
   assert.equal(validateCell(column, undefined), "Required");
-  // A typed value passes.
+
   assert.equal(validateCell(column, "Amit"), null);
 });
 
@@ -37,7 +37,7 @@ test("validateCell rejects non-numeric values on number columns", () => {
 });
 
 test("validateCell does not flag empty optional number columns", () => {
-  // An empty number cell should only be flagged if it's required.
+
   assert.equal(validateCell({ type: "number", min: 0 }, null), null);
   assert.equal(validateCell({ type: "number", min: 0 }, ""), null);
 });
@@ -49,7 +49,7 @@ test("collectInvalidCells walks rows + drafts and reports each error", () => {
   ];
   const rows = [
     { id: "r-1", name: "Amit", salary: 100 },
-    { id: "r-2", name: "", salary: -5 }, // both invalid
+    { id: "r-2", name: "", salary: -5 },
     { id: "r-3", name: "Maya", salary: 200 },
   ];
 
@@ -62,8 +62,7 @@ test("collectInvalidCells walks rows + drafts and reports each error", () => {
 test("collectInvalidCells uses the draft value when one exists", () => {
   const columns = [{ id: "name", type: "string", required: true }];
   const rows = [{ id: "r-1", name: "Amit" }];
-  // The user has typed an empty string -- this should now show as invalid
-  // even though the SAVED value was fine.
+
   const drafts = { "r-1": { name: "" } };
 
   const errors = collectInvalidCells(rows, columns, drafts);
